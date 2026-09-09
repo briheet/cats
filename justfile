@@ -33,6 +33,10 @@ check:
 build:
     bash scripts/build.sh
 
+# Build, sign, and notarize using your local Developer ID and keychain profile.
+release:
+    bash scripts/release.sh
+
 # Run the collector (pass --once or --profile as needed).
 run *args:
     cargo run -- {{args}}

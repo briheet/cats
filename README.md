@@ -1,5 +1,7 @@
 # Cats
 
+**Widget release status:** no signed public widget release is available yet. The collector works; installing it alone does not install the widget. See [widget installation and releases](docs/releasing.md) for the Home Manager bundle setup and signing requirements.
+
 A small, local-first macOS companion for Claude, Codex, and local agents. Rust collects usage and produces one snapshot; SwiftUI presents it in a glass menu-bar panel, a native window, and small through extra-large widgets. Spend, agent, and burn-rate variants follow the supplied visual reference.
 
 ![Cats widgets in dark mode](docs/preview-dark.png)
@@ -18,7 +20,7 @@ just open
 
 The build uses Xcode's SDK and compiler tools even inside a Nix shell. It produces `build/Build/Products/Release/Cats.app`, including the Rust collector and widget extension. `just install` copies it to `~/Applications` without overwriting an existing app. `just preview` renders the actual widget views into `docs/preview-{dark,light}.png` and a native-size validation sheet in `build/native-sizes.png`, using synthetic fixtures. The component breakdown and Apple design references are in [docs/design-plan.md](docs/design-plan.md).
 
-`just build` is an unsigned local development build for the current Mac's architecture. Desktop WidgetKit installation and shared-container entitlements require an appropriately signed app: open `macos/Cats.xcodeproj`, select your development team for both targets, register the `group.dev.cats.shared` App Group, and build with signing enabled. Widget registration on a signed installation has not been verified. The menu-bar app and collector can be developed without a signing identity.
+`just build` uses ad-hoc development signing for the current Mac's architecture, retaining the widget sandbox entitlement. This is not a distributable widget release. See [the release guide](docs/releasing.md) for Developer ID signing, team-prefixed App Groups, notarization, and the Home Manager installation path. Widget gallery visibility on a signed installation has not yet been verified.
 
 ## Collect
 

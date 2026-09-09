@@ -19,12 +19,12 @@ in
     package = lib.mkOption {
       type = lib.types.nullOr lib.types.package;
       default = pkgs.callPackage ./package.nix { };
-      description = "Collector package, or null to manage configuration only.";
+      description = "Collector-only package. When an app bundle is configured, Cats uses its embedded signed collector instead.";
     };
     appPackage = lib.mkOption {
       type = lib.types.nullOr lib.types.package;
-      default = null;
-      description = "Optional package containing Applications/Cats.app, built and signed using Xcode.";
+      default = import ./release.nix { inherit pkgs; };
+      description = "Widget-containing bundle. Defaults to the pinned signed release when available; null is collector-only.";
     };
     settings = lib.mkOption {
       type = toml.type;
@@ -40,16 +40,33 @@ in
       default = { };
       description = "Custom themes as TOML attribute sets, TOML text, or paths. Built-in names are reserved.";
     };
-    service.enable = lib.mkEnableOption "the Cats launchd collector (independent of the app)";
+    service.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Run the Cats collector through launchd.";
+    };
   };
   config = lib.mkIf cfg.enable {
+    home.sessionVariables.CATS_APP_GROUP =
+      if cfg.appPackage == null then
+        "group.dev.cats.shared"
+      else
+        cfg.appPackage.appGroup or "group.dev.cats.shared";
+    warnings =
+      lib.optional (cfg.appPackage == null)
+        "Cats: no signed widget release is pinned yet. Only the collector will be installed. Set programs.cats.appPackage to an Xcode-built bundle for development; see the Cats release guide.";
+    home.activation.installCatsBundle = lib.mkIf (cfg.appPackage != null) (
+      lib.hm.dag.entryBetween [ "setupLaunchAgents" ] [ "writeBoundary" ] ''
+        run ${pkgs.bash}/bin/bash ${../scripts/install-bundle.sh} ${cfg.appPackage}/Applications/Cats.app ${lib.escapeShellArg "${config.home.homeDirectory}/Applications/Cats.app"}
+      ''
+    );
     assertions = [
       {
         assertion = pkgs.stdenv.hostPlatform.isDarwin;
         message = "Cats requires macOS.";
       }
       {
-        assertion = !cfg.service.enable || cfg.package != null;
+        assertion = !cfg.service.enable || cfg.package != null || cfg.appPackage != null;
         message = "Cats service requires a collector package.";
       }
       {
@@ -68,8 +85,13 @@ in
       }
     ];
     home.packages =
-      lib.optional (cfg.package != null) cfg.package
-      ++ lib.optional (cfg.appPackage != null) cfg.appPackage;
+      lib.optional (cfg.package != null && cfg.appPackage == null) cfg.package
+      ++ lib.optional (cfg.appPackage != null) (
+        pkgs.runCommand "cats-cli" { } ''
+          mkdir -p "$out/bin"
+          ln -s ${cfg.appPackage}/Applications/Cats.app/Contents/Helpers/cats "$out/bin/cats"
+        ''
+      );
     xdg.configFile = {
       "cats/config.toml".source = toml.generate "cats-config.toml" cfg.settings;
     }
@@ -89,7 +111,12 @@ in
       enable = true;
       config = {
         ProgramArguments = [
-          "${cfg.package}/bin/cats"
+          (
+            if cfg.appPackage != null then
+              "${config.home.homeDirectory}/Applications/Cats.app/Contents/Helpers/cats"
+            else
+              "${cfg.package}/bin/cats"
+          )
           "--config"
           "${config.xdg.configHome}/cats/config.toml"
         ];
@@ -97,6 +124,22 @@ in
         KeepAlive = true;
         ThrottleInterval = 30;
         EnvironmentVariables.HOME = config.home.homeDirectory;
+        EnvironmentVariables.CATS_APP_GROUP =
+          if cfg.appPackage == null then
+            "group.dev.cats.shared"
+          else
+            cfg.appPackage.appGroup or "group.dev.cats.shared";
+      };
+    };
+    launchd.agents.cats-app = lib.mkIf (cfg.appPackage != null) {
+      enable = true;
+      config = {
+        ProgramArguments = [ "${config.home.homeDirectory}/Applications/Cats.app/Contents/MacOS/Cats" ];
+        RunAtLoad = true;
+        EnvironmentVariables = {
+          HOME = config.home.homeDirectory;
+          CATS_CONFIG = "${config.xdg.configHome}/cats/config.toml";
+        };
       };
     };
   };

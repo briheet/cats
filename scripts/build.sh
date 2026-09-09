@@ -8,5 +8,6 @@ else
   nix-shell -p xcodegen --run 'xcodegen generate --spec macos/project.yml'
 fi
 cats_arch="$(uname -m)"
-env -u SDKROOT -u DEVELOPER_DIR -u CC -u CXX -u LD -u AR -u AS /usr/bin/xcodebuild -quiet -project macos/Cats.xcodeproj -scheme Cats -configuration Release -destination "platform=macOS,arch=$cats_arch" -derivedDataPath build CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=YES build
+env -u SDKROOT -u DEVELOPER_DIR -u CC -u CXX -u LD -u AR -u AS /usr/bin/xcodebuild -quiet -project macos/Cats.xcodeproj -scheme Cats -configuration Release -destination "platform=macOS,arch=$cats_arch" -derivedDataPath build CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=YES "CATS_APP_GROUP=${CATS_APP_GROUP:-group.dev.cats.shared}" "MARKETING_VERSION=${CATS_VERSION:-0.1.0}" "CURRENT_PROJECT_VERSION=${CATS_BUILD_NUMBER:-1}" build
+bash scripts/sign.sh build/Build/Products/Release/Cats.app
 printf '\nBuilt: %s/build/Build/Products/Release/Cats.app\n' "$PWD"

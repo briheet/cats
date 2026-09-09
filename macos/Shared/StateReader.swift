@@ -1,10 +1,11 @@
 import Foundation
 
 enum SharedStorage {
+    static var appGroup: String { Bundle.main.object(forInfoDictionaryKey: "CatsAppGroup") as? String ?? "group.dev.cats.shared" }
     static var directory: URL {
         if let path = ProcessInfo.processInfo.environment["CATS_DATA_DIR"] { return URL(fileURLWithPath: path) }
-        return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.dev.cats.shared")
-            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Group Containers/group.dev.cats.shared")
+        return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup)
+            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Group Containers/\(appGroup)")
     }
     static func read(previous: WidgetState = .empty) -> Reading {
         let data = try? Data(contentsOf: directory.appendingPathComponent("cats-state.json"), options: .mappedIfSafe)
@@ -24,4 +25,3 @@ struct Reading {
     var unavailable = false
     var invalid = false
 }
-

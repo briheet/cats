@@ -11,6 +11,36 @@ use serde_json::json;
 use std::{fs, io::Write, path::Path};
 
 #[test]
+fn signed_app_group_configures_the_standalone_collector() {
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("config.toml");
+    fs::write(&file, "").unwrap();
+    let invoke = |group: &str| {
+        std::process::Command::new(env!("CARGO_BIN_EXE_cats"))
+            .args(["--config", file.to_str().unwrap(), "config"])
+            .env("HOME", dir.path())
+            .env("CATS_APP_GROUP", group)
+            .env_remove("CATS_DATA_DIR")
+            .env_remove("CATS_BUDGET_USD")
+            .output()
+            .unwrap()
+    };
+    let output = invoke("ABCDE12345.dev.cats.shared");
+    assert!(output.status.success());
+    let config: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(
+        config["data_dir"],
+        dir.path()
+            .join("Library/Group Containers/ABCDE12345.dev.cats.shared")
+            .to_str()
+            .unwrap()
+    );
+    assert!(!dir.path().join("Library").exists());
+    assert!(!invoke("../escape").status.success());
+    assert!(!invoke("..").status.success());
+}
+
+#[test]
 fn themes_resolve_inheritance_and_reject_invalid_inputs() {
     use cats::theme::{Appearance, BUILTINS, resolve};
     let dir = tempfile::tempdir().unwrap();

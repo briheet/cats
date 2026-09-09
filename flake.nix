@@ -32,7 +32,13 @@
       overlays.default = final: _: { cats = final.callPackage ./nix/package.nix { }; };
       homeManagerModules.default = import ./nix/home-manager.nix;
       homeManagerModules.cats = self.homeManagerModules.default;
-      lib.mkApp = { pkgs, src }: pkgs.callPackage ./nix/app.nix { inherit src; };
+      lib.mkApp =
+        {
+          pkgs,
+          src,
+          appGroup ? "group.dev.cats.shared",
+        }:
+        pkgs.callPackage ./nix/app.nix { inherit src appGroup; };
       apps = eachSystem (system: {
         default = {
           type = "app";

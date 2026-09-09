@@ -1,0 +1,23 @@
+name: Check
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  native:
+    strategy:
+      matrix:
+        runner: [macos-26, macos-26-intel]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup update stable --no-self-update
+      - run: brew install just xcodegen
+      - run: just check && just test && just build
+      - run: just smoke
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cats-development-${{ runner.arch }}
+          path: build/smoke-report.json

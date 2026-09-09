@@ -17,6 +17,8 @@ import WidgetKit
     }
     func startCollector() {
         guard collector?.isRunning != true else { return }
+        // A Home Manager service can own collection independently of this host app.
+        guard SharedStorage.read().unavailable else { return }
         let executable = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/cats")
         guard FileManager.default.isExecutableFile(atPath: executable.path) else { error = "Collector missing. Rebuild Cats with scripts/build.sh."; return }
         let process = Process()

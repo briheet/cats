@@ -79,10 +79,23 @@ impl Config {
         if !budget_usd.is_finite() || budget_usd <= 0. {
             return Err("budget-usd must be positive and finite".into());
         }
+        let app_group =
+            env::var("CATS_APP_GROUP").unwrap_or_else(|_| "group.dev.cats.shared".into());
+        if app_group.is_empty()
+            || !app_group
+                .bytes()
+                .all(|c| c.is_ascii_alphanumeric() || b"._-".contains(&c))
+            || app_group == "."
+            || app_group == ".."
+        {
+            return Err(
+                "CATS_APP_GROUP must be an application group identifier, not a path".into(),
+            );
+        }
         let data_dir = expand(
             data_dir
                 .or(settings.data_dir)
-                .unwrap_or_else(|| home.join("Library/Group Containers/group.dev.cats.shared")),
+                .unwrap_or_else(|| home.join("Library/Group Containers").join(app_group)),
         )?;
         Ok(Self {
             config_file,
