@@ -26,6 +26,8 @@ if [[ -e "$cats_destination" || -L "$cats_destination" ]]; then
 fi
 cats_stage="$(mktemp -d "$cats_parent/.cats-install.XXXXXX")"
 /usr/bin/ditto "$cats_source" "$cats_stage/Cats.app"
+# Nix store bundles are read-only; the owned copy needs writable directories to move.
+chmod -R u+w "$cats_stage/Cats.app"
 /usr/bin/codesign --verify --deep --strict "$cats_stage/Cats.app"
 if [[ -e "$cats_destination" || -L "$cats_destination" ]]; then
   mv "$cats_destination" "$cats_stage/previous-bundle"

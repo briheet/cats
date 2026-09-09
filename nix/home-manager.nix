@@ -124,6 +124,9 @@ in
         KeepAlive = true;
         ThrottleInterval = 30;
         EnvironmentVariables.HOME = config.home.homeDirectory;
+        EnvironmentVariables.CATS_PACKAGE = toString (
+          if cfg.appPackage != null then cfg.appPackage else cfg.package
+        );
         EnvironmentVariables.CATS_APP_GROUP =
           if cfg.appPackage == null then
             "group.dev.cats.shared"
@@ -138,6 +141,7 @@ in
         RunAtLoad = true;
         EnvironmentVariables = {
           HOME = config.home.homeDirectory;
+          CATS_PACKAGE = toString cfg.appPackage;
           CATS_CONFIG = "${config.xdg.configHome}/cats/config.toml";
         };
       };
