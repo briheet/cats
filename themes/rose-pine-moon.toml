@@ -1,0 +1,5 @@
+inherits = "rose-pine"
+[colors]
+surface = "#232136"
+claude = "#ea9a97"
+codex = "#3e8fb0"

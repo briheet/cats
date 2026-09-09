@@ -1,0 +1,7 @@
+{"timestamp":"2026-09-09T12:00:00Z","type":"session_meta","payload":{"id":"codex-test","cwd":"/work/tests"}}
+{"timestamp":"2026-09-09T12:00:00Z","type":"turn_context","payload":{"model":"gpt-5.6-sol"}}
+{"timestamp":"2026-09-09T12:00:00Z","type":"event_msg","payload":{"type":"task_started"}}
+{"timestamp":"2026-09-09T12:00:10Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1000,"cached_input_tokens":400,"output_tokens":100,"reasoning_output_tokens":70}}}}
+{"timestamp":"2026-09-09T12:00:10Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1000,"cached_input_tokens":400,"output_tokens":100,"reasoning_output_tokens":70}}}}
+{"timestamp":"2026-09-09T12:10:00Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1600,"cached_input_tokens":500,"output_tokens":150,"reasoning_output_tokens":100}}}}
+{"timestamp":"2026-09-09T12:10:01Z","type":"event_msg","payload":{"type":"task_complete"}}

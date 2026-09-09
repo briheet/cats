@@ -1,0 +1,22 @@
+# Rust and native build output
+target/
+build/
+.build/
+DerivedData/
+*.app/
+*.dSYM/
+*.xcarchive/
+*.xcresult/
+
+# Nix build links and development-shell cache
+/result
+/result-*
+.direnv/
+
+# Xcode and SwiftPM local state (keep shared schemes and lockfiles)
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+
+# macOS metadata
+.DS_Store

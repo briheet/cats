@@ -1,0 +1,11 @@
+appearance = "light"
+[colors]
+surface = "#faf4ed"
+text = "#464261"
+muted = "#797593"
+accent = "#56949f"
+secondary = "#907aa9"
+claude = "#d7827e"
+codex = "#286983"
+warning = "#ea9d34"
+error = "#b4637a"

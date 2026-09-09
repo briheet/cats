@@ -1,0 +1,329 @@
+use cats::{
+    aggregation::{State, aggregate_between},
+    cli::Cli,
+    collectors::{self, Cursor},
+    snapshot,
+    storage::Store,
+    telemetry::{Event, Tokens, price},
+};
+use clap::Parser;
+use serde_json::json;
+use std::{fs, io::Write, path::Path};
+
+#[test]
+fn themes_resolve_inheritance_and_reject_invalid_inputs() {
+    use cats::theme::{Appearance, BUILTINS, resolve};
+    let dir = tempfile::tempdir().unwrap();
+    for (name, _) in BUILTINS {
+        resolve(name, dir.path()).unwrap();
+    }
+    let dawn = resolve("rose-pine-dawn", dir.path()).unwrap();
+    assert_eq!(dawn.appearance, Appearance::Light);
+    assert_eq!(dawn.colors["surface"], "#faf4ed");
+    fs::write(
+        dir.path().join("custom.toml"),
+        "inherits = 'nord'\n[colors]\naccent = '#abcdef'",
+    )
+    .unwrap();
+    let custom = resolve("custom", dir.path()).unwrap();
+    assert_eq!(custom.colors["accent"], "#abcdef");
+    assert_eq!(custom.colors["surface"], "#2e3440");
+    for text in [
+        "inherits = 'custom'",
+        "[colors]\naccent = 'red'",
+        "[colors]\nacccent = '#ffffff'",
+        "unknown = true",
+    ] {
+        fs::write(dir.path().join("custom.toml"), text).unwrap();
+        assert!(resolve("custom", dir.path()).is_err());
+    }
+    assert!(resolve("../nord", dir.path()).is_err());
+    assert!(resolve("missing", dir.path()).is_err());
+}
+
+#[test]
+fn configuration_is_strict_and_cli_overrides_file() {
+    use cats::config::Config;
+    let dir = tempfile::tempdir().unwrap();
+    let file = dir.path().join("config.toml");
+    assert!(Config::load(Some(file.clone()), None, None).is_err());
+    fs::write(
+        &file,
+        "theme = 'nord'\nbudget-usd = 40\nclaude-dir = '~/test/projects'",
+    )
+    .unwrap();
+    let config =
+        Config::load(Some(file.clone()), Some(dir.path().join("data")), Some(12.)).unwrap();
+    assert_eq!(config.budget_usd, 12.);
+    assert_eq!(config.data_dir, dir.path().join("data"));
+    assert!(config.claude_dir.is_absolute());
+    assert_eq!(config.theme.colors["surface"], "#2e3440");
+    assert_eq!(
+        Config::load(Some(file.clone()), None, None)
+            .unwrap()
+            .budget_usd,
+        40.
+    );
+    assert!(!dir.path().join("data").exists());
+    for text in [
+        "budget-usd = nan",
+        "budget-usd = 0",
+        "buget-usd = 2",
+        "data-dir = 'relative'",
+        "theme = 'missing'",
+    ] {
+        fs::write(&file, text).unwrap();
+        assert!(Config::load(Some(file.clone()), None, None).is_err());
+    }
+}
+
+fn store() -> Store {
+    Store::open(Path::new(":memory:")).unwrap()
+}
+fn parse_fixture(text: &str, provider: &str) -> (Cursor, Vec<Event>) {
+    let mut cursor = Cursor::default();
+    let events = text
+        .lines()
+        .filter_map(|line| {
+            collectors::parse(&serde_json::from_str(line).unwrap(), provider, &mut cursor)
+        })
+        .collect();
+    (cursor, events)
+}
+fn event(id: &str, timestamp: i64, cost: f64) -> Event {
+    Event {
+        id: id.into(),
+        timestamp,
+        provider: "Claude".into(),
+        model: "claude-sonnet-4-6".into(),
+        session: "s".into(),
+        agent: "s".into(),
+        tokens: Tokens {
+            input: 1000,
+            ..Tokens::default()
+        },
+        cost: Some(cost),
+    }
+}
+
+#[test]
+fn claude_cache_buckets_are_disjoint() {
+    let (c, events) = parse_fixture(include_str!("fixtures/claude.jsonl"), "Claude");
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].tokens.total(), 2100);
+    assert_eq!(events[0].tokens.cache_write, 300);
+    assert_eq!(events[0].tokens.cache_write_1h, 100);
+    assert!((events[0].cost.unwrap() - 0.007875).abs() < 1e-10);
+    assert_eq!(c.status, "completed");
+    assert_eq!(c.name, "backend");
+}
+#[test]
+fn codex_cumulative_usage_deduplicates_and_excludes_reasoning_subtotal() {
+    let (c, events) = parse_fixture(include_str!("fixtures/codex.jsonl"), "Codex");
+    assert_eq!(events.len(), 2);
+    assert_eq!(events.iter().map(|e| e.tokens.total()).sum::<u64>(), 1750);
+    assert_eq!(events[1].tokens.input, 500);
+    assert_eq!(c.status, "completed");
+}
+#[test]
+fn unknown_models_are_unpriced_and_version_matching_is_exact() {
+    let t = Tokens {
+        input: 1_000_000,
+        ..Tokens::default()
+    };
+    assert_eq!(price("future-model", t), None);
+    assert_eq!(price("claude-sonnet-4-20250514", t), Some(3.));
+    assert_eq!(price("claude-sonnet-4-99", t), None);
+    assert_eq!(price("gpt-5.6-sol", t), Some(4.));
+}
+#[test]
+fn invalid_input_and_future_events_are_ignored() {
+    let mut c = Cursor::default();
+    assert!(collectors::parse(&json!({}), "Claude", &mut c).is_none());
+    assert!(
+        collectors::parse(
+            &json!({"timestamp":"2099-01-01T00:00:00Z"}),
+            "Local",
+            &mut c
+        )
+        .is_none()
+    );
+    assert_eq!(
+        Tokens::codex(&json!({"input_tokens":10,"cached_input_tokens":100,"output_tokens":-3}))
+            .total(),
+        10
+    );
+}
+#[test]
+fn sqlite_migration_is_repeatable_and_usage_upserts() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("db");
+    let s = Store::open(&path).unwrap();
+    let mut e = event("a", 100, 1.);
+    assert_eq!(Store::insert(&s.db, &e).unwrap(), 1);
+    assert_eq!(Store::insert(&s.db, &e).unwrap(), 0);
+    e.tokens.output = 100;
+    e.cost = Some(2.);
+    assert_eq!(Store::insert(&s.db, &e).unwrap(), 1);
+    drop(s);
+    let s = Store::open(&path).unwrap();
+    let total: f64 =
+        s.db.query_row("SELECT SUM(cost) FROM events", [], |r| r.get(0))
+            .unwrap();
+    assert_eq!(total, 2.);
+}
+#[test]
+fn incremental_ingestion_survives_restart_rotation_and_partial_lines() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("session.jsonl");
+    let db = dir.path().join("db");
+    fs::write(&path, include_str!("fixtures/codex.jsonl")).unwrap();
+    let mut s = Store::open(&db).unwrap();
+    assert_eq!(
+        collectors::ingest(&mut s, &path, "Codex").unwrap().events,
+        2
+    );
+    drop(s);
+    let mut s = Store::open(&db).unwrap();
+    assert_eq!(
+        collectors::ingest(&mut s, &path, "Codex").unwrap().events,
+        0
+    );
+    let extra = json!({"timestamp":"2026-09-09T12:20:00Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":2000,"cached_input_tokens":500,"output_tokens":200}}}}).to_string();
+    let mut file = fs::OpenOptions::new().append(true).open(&path).unwrap();
+    write!(file, "{extra}").unwrap();
+    assert_eq!(
+        collectors::ingest(&mut s, &path, "Codex").unwrap().events,
+        0
+    );
+    writeln!(file).unwrap();
+    assert_eq!(
+        collectors::ingest(&mut s, &path, "Codex").unwrap().events,
+        1
+    );
+    fs::rename(&path, dir.path().join("old")).unwrap();
+    fs::write(&path, include_str!("fixtures/codex.jsonl")).unwrap();
+    assert_eq!(
+        collectors::ingest(&mut s, &path, "Codex").unwrap().events,
+        0
+    );
+    assert_eq!(
+        s.db.query_row("SELECT COUNT(*) FROM events", [], |r| r.get::<_, i64>(0))
+            .unwrap(),
+        3
+    );
+}
+#[test]
+fn malformed_and_oversized_lines_do_not_block_valid_records() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("claude.jsonl");
+    let content = format!(
+        "invalid\n{}\n{}",
+        "x".repeat(1_100_000),
+        include_str!("fixtures/claude.jsonl")
+    );
+    fs::write(&path, content).unwrap();
+    let mut s = store();
+    assert_eq!(
+        collectors::ingest(&mut s, &path, "Claude").unwrap().events,
+        1
+    );
+}
+#[test]
+fn daily_totals_rolling_burn_and_projection_have_separate_windows() {
+    let s = store();
+    for (id, ts, cost) in [
+        ("old", 100, 10.),
+        ("a", 8000, 1.),
+        ("b", 8500, 2.),
+        ("future", 9500, 99.),
+    ] {
+        Store::insert(&s.db, &event(id, ts, cost)).unwrap();
+    }
+    let result = aggregate_between(&s, 9000, 7200, 93600, 20.).unwrap();
+    assert_eq!(result.today.spend_usd, 3.);
+    assert_eq!(result.today.burn_rate_per_hour, 6.);
+    assert_eq!(result.today.projected_daily_spend, Some(144.));
+    assert_eq!(result.today.tokens_total, 2000);
+    assert_eq!(result.today.budget_state, "normal");
+}
+#[test]
+fn projection_requires_history_and_known_prices() {
+    let s = store();
+    Store::insert(&s.db, &event("a", 8900, 19.)).unwrap();
+    let result = aggregate_between(&s, 9000, 0, 86400, 20.).unwrap();
+    assert!(result.today.projected_daily_spend.is_none());
+    assert_eq!(result.today.budget_state, "warning");
+    let mut e = event("b", 8000, 2.);
+    e.cost = None;
+    Store::insert(&s.db, &e).unwrap();
+    assert_eq!(
+        aggregate_between(&s, 9000, 0, 86400, 20.)
+            .unwrap()
+            .today
+            .unpriced_events,
+        1
+    );
+}
+#[test]
+fn idle_agents_wait_instead_of_falsely_completing() {
+    let s = store();
+    let c = Cursor {
+        session: "s".into(),
+        name: "backend".into(),
+        status: "running".into(),
+        started: 8000,
+        updated: 8100,
+        ..Cursor::default()
+    };
+    Store::save_cursor(&s.db, "test", "Claude", &c).unwrap();
+    assert_eq!(
+        aggregate_between(&s, 8200, 0, 86400, 20.)
+            .unwrap()
+            .active_agents,
+        1
+    );
+    assert_eq!(
+        aggregate_between(&s, 9000, 0, 86400, 20.)
+            .unwrap()
+            .waiting_agents,
+        1
+    );
+}
+#[test]
+fn snapshots_are_atomic_and_only_rewrite_changed_content() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut state = aggregate_between(&store(), 9000, 0, 86400, 20.).unwrap();
+    assert!(snapshot::write(dir.path(), &state).unwrap());
+    state.generated_at += 60;
+    assert!(!snapshot::write(dir.path(), &state).unwrap());
+    let value: State =
+        serde_json::from_slice(&fs::read(dir.path().join("cats-state.json")).unwrap()).unwrap();
+    assert_eq!(value.generated_at, 9000);
+    assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 1);
+}
+#[test]
+fn storage_never_retains_conversation_content() {
+    let (c, events) = parse_fixture(include_str!("fixtures/claude.jsonl"), "Claude");
+    let s = store();
+    for e in events {
+        Store::insert(&s.db, &e).unwrap();
+    }
+    Store::save_cursor(&s.db, "source", "Claude", &c).unwrap();
+    let names: String =
+        s.db.query_row(
+            "SELECT GROUP_CONCAT(name) FROM pragma_table_info('events')",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert!(!names.contains("content") && !names.contains("prompt"));
+    assert!(!serde_json::to_string(&c).unwrap().contains("message"));
+}
+#[test]
+fn clap_validates_budget_and_preserves_agent_arguments() {
+    assert!(Cli::try_parse_from(["cats", "--budget", "NaN"]).is_err());
+    assert!(Cli::try_parse_from(["cats", "--budget", "0"]).is_err());
+    assert!(Cli::try_parse_from(["cats", "run", "backend", "--", "echo", "--hello"]).is_ok());
+    assert!(Cli::try_parse_from(["cats", "run", "backend"]).is_err());
+}

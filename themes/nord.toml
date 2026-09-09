@@ -1,0 +1,11 @@
+appearance = "dark"
+[colors]
+surface = "#2e3440"
+text = "#eceff4"
+muted = "#d8dee9"
+accent = "#a3be8c"
+secondary = "#88c0d0"
+claude = "#d08770"
+codex = "#81a1c1"
+warning = "#ebcb8b"
+error = "#bf616a"
