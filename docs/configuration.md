@@ -46,9 +46,16 @@ Additional IDs: `medium-agents`, `small-agents`, `small-burn-rate`. For typograp
 use `CATS_FONT_FAMILY` and `CATS_FONT_SIZE` (10–20, default 12). Home Manager exposes
 these as [variant lists and font options](nix-setup.md).
 
+`CATS_OPACITY` controls glass-background opacity from 0 to 1 (default 1).
+Text and charts stay opaque; 1 retains the standard translucent glass. macOS
+Reduce Transparency takes precedence. Restart the UI after changing this value.
+
 ## Themes
 
-Built-ins: `cats`, `nord`, `rose-pine`, `rose-pine-moon`, `rose-pine-dawn`.
+Built-ins: `cats`, `nord`, `rose-pine`, `rose-pine-moon`, `rose-pine-dawn`,
+`gruvbox` (dark), and `catppuccin-mocha`.
+New palettes follow [Gruvbox](https://github.com/morhetz/gruvbox) and
+[Catppuccin](https://github.com/catppuccin/palette).
 List resolved palettes with `cats themes`.
 
 ```nix

@@ -20,7 +20,7 @@ struct SmallAgentsCard: View {
                 Text("\(reading.state.waitingAgents)").monospacedDigit()
             }.catsFont(size: 11)
             HStack {
-                StatusDot(status: "failed")
+                StatusDot(status: "failed", muted: reading.state.failedAgents == 0)
                 Text("Failed")
                 Spacer()
                 Text("\(reading.state.failedAgents)").monospacedDigit()

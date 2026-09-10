@@ -80,6 +80,10 @@ to restart the UI with changed variants or typography.
 
 ## Import the module
 
+Set `programs.cats.desktop.opacity = 0.9;` for slightly more transparent glass.
+Values range from 0 (no glass background) to 1 (the standard glass treatment).
+Text remains opaque. The default is 1; macOS Reduce Transparency overrides it.
+
 For a host file at `hosts/YOUR_HOST/home.nix`:
 
 ```nix

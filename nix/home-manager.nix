@@ -72,6 +72,13 @@ in
       default = [ "providers" ];
       description = "Medium cards to display; duplicates are ignored.";
     };
+    desktop.opacity = lib.mkOption {
+      type = lib.types.addCheck (lib.types.either lib.types.int lib.types.float) (
+        value: value >= 0 && value <= 1
+      );
+      default = 1.0;
+      description = "Glass background opacity multiplier (0–1); text stays opaque. Reduce Transparency overrides this.";
+    };
     desktop.font.family = lib.mkOption {
       type = lib.types.str;
       default = "system";
@@ -132,6 +139,8 @@ in
           && !(builtins.elem name [
             "cats"
             "nord"
+            "gruvbox"
+            "catppuccin-mocha"
             "rose-pine"
             "rose-pine-moon"
             "rose-pine-dawn"
@@ -185,6 +194,7 @@ in
           CATS_MARGIN = toString cfg.desktop.margin;
           CATS_FONT_FAMILY = cfg.desktop.font.family;
           CATS_FONT_SIZE = toString cfg.desktop.font.size;
+          CATS_OPACITY = toString cfg.desktop.opacity;
           CATS_WIDGETS = lib.concatStringsSep "," (
             lib.optional cfg.desktop.large.enable "large"
             ++ lib.optionals cfg.desktop.medium.enable (

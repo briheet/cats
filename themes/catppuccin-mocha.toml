@@ -1,0 +1,12 @@
+# Palette: https://github.com/catppuccin/palette
+appearance = "dark"
+[colors]
+surface = "#1e1e2e"
+text = "#cdd6f4"
+muted = "#bac2de"
+accent = "#a6e3a1"
+secondary = "#94e2d5"
+claude = "#fab387"
+codex = "#89b4fa"
+warning = "#f9e2af"
+error = "#f38ba8"

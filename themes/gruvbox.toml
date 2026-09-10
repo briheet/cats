@@ -1,0 +1,12 @@
+# Palette: https://github.com/morhetz/gruvbox
+appearance = "dark"
+[colors]
+surface = "#282828"
+text = "#ebdbb2"
+muted = "#bdae93"
+accent = "#b8bb26"
+secondary = "#8ec07c"
+claude = "#fe8019"
+codex = "#83a598"
+warning = "#fabd2f"
+error = "#fb4934"

@@ -128,6 +128,7 @@
             ];
             font.family = "Helvetica Neue";
             font.size = 16;
+            opacity = 0.75;
             font.package = pkgs.nerd-fonts.jetbrains-mono;
           };
         in
@@ -152,6 +153,8 @@
             assert
               variantsHome.config.launchd.agents.cats-app.config.EnvironmentVariables.CATS_FONT_SIZE == "16";
             assert builtins.elem pkgs.nerd-fonts.jetbrains-mono variantsHome.config.home.packages;
+            assert
+              variantsHome.config.launchd.agents.cats-app.config.EnvironmentVariables.CATS_OPACITY == "0.750000";
             pkgs.runCommand "cats-home-manager-check" { } ''
               mkdir -p config/themes
               cp ${home.config.xdg.configFile."cats/config.toml".source} config/config.toml

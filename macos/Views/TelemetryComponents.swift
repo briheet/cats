@@ -92,9 +92,11 @@ struct ProviderRow: View {
 struct StatusDot: View {
     @Environment(\.catsPalette) private var palette
     let status: String
+    var muted = false
     var body: some View {
         Image(systemName: palette.status(status).0).catsFont(size: 9, weight: .medium)
-            .foregroundStyle(palette.status(status).1).frame(width: 11).accessibilityLabel(status)
+            .foregroundStyle(muted ? palette.muted : palette.status(status).1).frame(width: 11)
+            .accessibilityLabel(status)
     }
 }
 

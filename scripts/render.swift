@@ -55,7 +55,7 @@ import SwiftUI
             else { throw CocoaError(.fileWriteUnknown) }
             try png.write(to: directory.appendingPathComponent("agents-\(count).png"))
         }
-        for name in ["dark", "light", "nord", "rose-pine", "rose-pine-moon", "rose-pine-dawn"] {
+        for name in ["dark", "light"] + themes.keys.sorted() {
             var preview = state
             preview.theme = themes[name]
             for kind in DesktopCardKind.allCases {
@@ -88,9 +88,17 @@ import SwiftUI
                     to: directory.appendingPathComponent("font-\(family)-\(Int(size)).png"))
             }
         }
-        print(
-            "PASS: six card variants, 64 selections, six themes, custom/fallback fonts and size extremes"
-        )
+        for opacity in [0.0, 0.5, 1.0] {
+            let renderer = ImageRenderer(
+                content: PreviewGallery(reading: SnapshotReading(state: state))
+                    .environment(\.catsGlassOpacity, opacity))
+            renderer.scale = 1
+            guard let tiff = renderer.nsImage?.tiffRepresentation,
+                let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:])
+            else { throw CocoaError(.fileWriteUnknown) }
+            try png.write(to: directory.appendingPathComponent("opacity-\(opacity).png"))
+        }
+        print("PASS: six variants, 64 selections, all built-in themes, font and opacity extremes")
     }
 
     @MainActor private static func checkCorners(kind: DesktopCardKind, reading: SnapshotReading)

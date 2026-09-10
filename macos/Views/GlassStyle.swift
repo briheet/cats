@@ -35,8 +35,18 @@ struct CatsPalette {
         }
     }
 }
+private struct GlassOpacityKey: EnvironmentKey {
+    static let defaultValue: Double = {
+        let value = Double(ProcessInfo.processInfo.environment["CATS_OPACITY"] ?? "1") ?? 1
+        return value.isFinite ? min(1, max(0, value)) : 1
+    }()
+}
 private struct CatsPaletteKey: EnvironmentKey { static let defaultValue = CatsPalette() }
 extension EnvironmentValues {
+    var catsGlassOpacity: Double {
+        get { self[GlassOpacityKey.self] }
+        set { self[GlassOpacityKey.self] = newValue }
+    }
     var catsPalette: CatsPalette {
         get { self[CatsPaletteKey.self] }
         set { self[CatsPaletteKey.self] = newValue }
@@ -60,6 +70,7 @@ extension View {
 }
 
 struct GlassSurface: View {
+    @Environment(\.catsGlassOpacity) private var opacity
     @Environment(\.catsPalette) private var palette
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -90,6 +101,7 @@ struct GlassSurface: View {
                     ], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 0.65)
         )
         .shadow(color: .black.opacity(scheme == .dark ? 0.18 : 0.08), radius: 18, x: 0, y: 10)
+        .opacity(reduceTransparency ? 1 : opacity)
     }
 }
 
