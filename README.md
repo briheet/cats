@@ -1,5 +1,7 @@
 # Cats
 
+![Cats desktop widgets showing usage, estimated spend, and agent activity](assets/cats-desktop.png)
+
 Local AI usage, at a glance. Cats reads Claude Code, Codex, and local-agent logs
 and displays token usage, estimated spend, and session activity on your desktop.
 
