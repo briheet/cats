@@ -42,6 +42,10 @@ restart; applying Home Manager handles the service configuration change.
 For direct launches, `CATS_WIDGETS=large,small cats-desktop` selects cards.
 An empty value selects none; an unset variable defaults to large and medium.
 
+Additional IDs: `medium-agents`, `small-agents`, `small-burn-rate`. For typography,
+use `CATS_FONT_FAMILY` and `CATS_FONT_SIZE` (10–20, default 12). Home Manager exposes
+these as [variant lists and font options](nix-setup.md).
+
 ## Themes
 
 Built-ins: `cats`, `nord`, `rose-pine`, `rose-pine-moon`, `rose-pine-dawn`.

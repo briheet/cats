@@ -8,10 +8,12 @@ struct PreviewGallery: View {
             DesktopCard(kind: .overview, reading: reading)
             HStack(spacing: 24) {
                 DesktopCard(kind: .providers, reading: reading)
+                DesktopCard(kind: .mediumAgents, reading: reading)
+            }
+            HStack(spacing: 24) {
                 DesktopCard(kind: .small, reading: reading)
-                DesktopCard(
-                    kind: .small,
-                    reading: SnapshotReading(state: TelemetryState(theme: reading.state.theme)))
+                DesktopCard(kind: .smallAgents, reading: reading)
+                DesktopCard(kind: .smallBurnRate, reading: reading)
             }
         }
         .padding(32)

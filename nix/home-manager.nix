@@ -51,6 +51,43 @@ in
       description = "Show the medium provider card (340 × 170 points).";
     };
     desktop.small.enable = lib.mkEnableOption "the small spend card (170 × 170 points)";
+    desktop.small.variants = lib.mkOption {
+      type = lib.types.listOf (
+        lib.types.enum [
+          "spend"
+          "agents"
+          "burn-rate"
+        ]
+      );
+      default = [ "spend" ];
+      description = "Small cards to display; duplicates are ignored.";
+    };
+    desktop.medium.variants = lib.mkOption {
+      type = lib.types.listOf (
+        lib.types.enum [
+          "providers"
+          "agents"
+        ]
+      );
+      default = [ "providers" ];
+      description = "Medium cards to display; duplicates are ignored.";
+    };
+    desktop.font.family = lib.mkOption {
+      type = lib.types.str;
+      default = "system";
+      description = "Installed font family or PostScript name; system uses the macOS default.";
+    };
+    desktop.font.package = lib.mkOption {
+      type = lib.types.nullOr lib.types.package;
+      default = null;
+      example = lib.literalExpression "pkgs.nerd-fonts.jetbrains-mono";
+      description = "Optional font package installed with the desktop UI.";
+    };
+    desktop.font.size = lib.mkOption {
+      type = lib.types.ints.between 10 20;
+      default = 12;
+      description = "Base text size in points. Cards scale proportionally to preserve layout.";
+    };
     desktop.margin = lib.mkOption {
       type = lib.types.ints.between 0 200;
       default = 24;
@@ -104,7 +141,12 @@ in
       }
     ];
     programs.cats.settings.data-dir = lib.mkDefault "${config.home.homeDirectory}/Library/Application Support/Cats";
-    home.packages = [ cfg.package ] ++ lib.optional cfg.desktop.enable cfg.desktop.package;
+    home.packages = [
+      cfg.package
+    ]
+    ++ lib.optionals cfg.desktop.enable (
+      [ cfg.desktop.package ] ++ lib.optional (cfg.desktop.font.package != null) cfg.desktop.font.package
+    );
     xdg.configFile = {
       "cats/config.toml".source = toml.generate "cats-config.toml" cfg.settings;
     }
@@ -141,12 +183,20 @@ in
           CATS_EXTERNAL_COLLECTOR = "1";
           CATS_POSITION = cfg.desktop.position;
           CATS_MARGIN = toString cfg.desktop.margin;
+          CATS_FONT_FAMILY = cfg.desktop.font.family;
+          CATS_FONT_SIZE = toString cfg.desktop.font.size;
           CATS_WIDGETS = lib.concatStringsSep "," (
-            lib.filter (size: cfg.desktop.${size}.enable) [
-              "large"
-              "medium"
-              "small"
-            ]
+            lib.optional cfg.desktop.large.enable "large"
+            ++ lib.optionals cfg.desktop.medium.enable (
+              map (variant: if variant == "providers" then "medium" else "medium-agents") (
+                lib.unique cfg.desktop.medium.variants
+              )
+            )
+            ++ lib.optionals cfg.desktop.small.enable (
+              map (variant: if variant == "spend" then "small" else "small-${variant}") (
+                lib.unique cfg.desktop.small.variants
+              )
+            )
           );
         };
         RunAtLoad = true;

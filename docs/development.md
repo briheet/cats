@@ -13,6 +13,7 @@ just test                    # Rust integration and Swift model/storage tests
 just build                   # Local bundle; does not launch it
 just smoke                   # Isolated ingestion, process control, single-writer lock
 just desktop-selection-smoke # Briefly opens each of eight card combinations
+just desktop-variants-smoke  # Additional variants, all six together, custom font sizes
 just preview                 # Synthetic previews and corner checks across six themes
 just profile-ui              # Synthetic 20k-record import and 70-second UI CPU/RSS sample
 just refresh-smoke           # Actual five-second AppState refresh and deduplication

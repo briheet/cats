@@ -19,7 +19,8 @@ import SwiftUI
     func show() {
         if panels.isEmpty {
             for kind in DesktopCardKind.enabled(in: ProcessInfo.processInfo.environment) {
-                let size = kind.size
+                let scale = CatsTypography.configured.scale
+                let size = CGSize(width: kind.size.width * scale, height: kind.size.height * scale)
                 let panel = NSPanel(
                     contentRect: NSRect(origin: .zero, size: size),
                     styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -32,8 +33,12 @@ import SwiftUI
                 // Above wallpaper, below ordinary application windows.
                 panel.level = NSWindow.Level(
                     rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
-                panel.contentView = NSHostingView(
+                let content = NSHostingView(
                     rootView: LiveDesktopCard(model: model, kind: kind))
+                // Panel geometry owns sizing; intrinsic SwiftUI updates must not resize it.
+                content.sizingOptions = []
+                panel.contentView = content
+                panel.setContentSize(size)
                 panels.append(panel)
             }
         }
@@ -48,13 +53,26 @@ import SwiftUI
         let frame = screen.visibleFrame
         let env = ProcessInfo.processInfo.environment
         let margin = CGFloat(min(200, max(0, Double(env["CATS_MARGIN"] ?? "24") ?? 24)))
+        let leftAligned = env["CATS_POSITION"] == "top-left"
+        let rowWidth = min(
+            frame.width - 2 * margin,
+            max(panels.map { $0.frame.width }.max() ?? 0, 696 * CatsTypography.configured.scale))
         var top = frame.maxY - margin
+        var used: CGFloat = 0
+        var rowHeight: CGFloat = 0
         for panel in panels {
+            if used > 0 && used + panel.frame.width > rowWidth {
+                top -= rowHeight + 16
+                used = 0
+                rowHeight = 0
+            }
             let x =
-                env["CATS_POSITION"] == "top-left"
-                ? frame.minX + margin : frame.maxX - panel.frame.width - margin
-            panel.setFrameOrigin(NSPoint(x: x, y: max(frame.minY, top - panel.frame.height)))
-            top -= panel.frame.height + 16
+                leftAligned
+                ? frame.minX + margin + used
+                : frame.maxX - margin - used - panel.frame.width
+            panel.setFrameOrigin(NSPoint(x: max(frame.minX, x), y: top - panel.frame.height))
+            used += panel.frame.width + 16
+            rowHeight = max(rowHeight, panel.frame.height)
         }
     }
 

@@ -1,11 +1,19 @@
 import AppKit
+import CoreText
 import SwiftUI
 
 @main struct Render {
     @MainActor static func main() throws {
         _ = NSApplication.shared
+        if let path = ProcessInfo.processInfo.environment["CATS_PREVIEW_FONT_PATH"] {
+            guard
+                CTFontManagerRegisterFontsForURL(URL(fileURLWithPath: path) as CFURL, .process, nil)
+            else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+        }
         precondition(DesktopCardKind.enabled(in: [:]) == [.overview, .providers])
-        for mask in 0..<8 {
+        for mask in 0..<(1 << DesktopCardKind.allCases.count) {
             let expected = DesktopCardKind.allCases.enumerated().compactMap { index, kind in
                 mask & (1 << index) == 0 ? nil : kind
             }
@@ -59,7 +67,26 @@ import SwiftUI
             else { throw CocoaError(.fileWriteUnknown) }
             try png.write(to: directory.appendingPathComponent("\(name).png"))
         }
-        print("PASS: transparent corners for all three desktop cards in all six themes")
+        for size: CGFloat in [10, 16, 20] {
+            for family in [
+                "system", "Helvetica Neue", "MissingCatsFont", "JetBrainsMono Nerd Font",
+            ] {
+                let typography = CatsTypography(family: family, size: size)
+                let renderer = ImageRenderer(
+                    content: PreviewGallery(reading: SnapshotReading(state: state))
+                        .environment(\.catsTypography, typography))
+                renderer.scale = 1
+                guard let tiff = renderer.nsImage?.tiffRepresentation,
+                    let png = NSBitmapImageRep(data: tiff)?.representation(
+                        using: .png, properties: [:])
+                else { throw CocoaError(.fileWriteUnknown) }
+                try png.write(
+                    to: directory.appendingPathComponent("font-\(family)-\(Int(size)).png"))
+            }
+        }
+        print(
+            "PASS: six card variants, 64 selections, six themes, custom/fallback fonts and size extremes"
+        )
     }
 
     @MainActor private static func checkCorners(kind: DesktopCardKind, reading: SnapshotReading)

@@ -32,6 +32,9 @@ Create `modules/common/cats.nix`:
       large.enable = true;
       medium.enable = true;
       small.enable = false;
+      small.variants = [ "spend" ];
+      medium.variants = [ "providers" ];
+      font = { family = "system"; size = 12; };
     };
     settings = {
       theme = "nord";
@@ -50,9 +53,30 @@ The default flake targets Apple Silicon. See [distribution](releasing.md) for In
 
 | Card | Content | Size in points |
 | --- | --- | --- |
-| Large | Spend, up to five agents, providers | 760 × 250 |
-| Medium | Provider usage | 340 × 170 |
-| Small | Spend and budget | 170 × 170 |
+| Large | Overview (one type) | 760 × 250 |
+| Medium | `providers`, `agents` | 340 × 170 |
+| Small | `spend`, `agents`, `burn-rate` | 170 × 170 |
+
+Variant lists select one or multiple cards, in list order. For all six:
+
+```nix
+programs.cats.desktop = {
+  large.enable = true;
+  medium = { enable = true; variants = [ "providers" "agents" ]; };
+  small = { enable = true; variants = [ "spend" "agents" "burn-rate" ]; };
+  font = { family = "Helvetica Neue"; size = 14; };
+};
+```
+
+`font.family` accepts an installed font family/PostScript name; unavailable fonts
+fall back to the system font. Add `pkgs` to the common module's arguments and set
+`font.package = pkgs.nerd-fonts.jetbrains-mono;` with
+`font.family = "JetBrainsMono Nerd Font";` to install a Nerd Font through Home Manager.
+The package is optional and defaults to null. `font.size` accepts 10–20
+points, default 12. Typography, spacing, and card dimensions scale together by
+`size / 12` so larger text retains the design's proportions. Cards wrap into rows;
+at large sizes you may need fewer cards to fit your display. Reapply Home Manager
+to restart the UI with changed variants or typography.
 
 ## Import the module
 

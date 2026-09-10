@@ -61,8 +61,9 @@ belongs to the domain model, not SQL row assembly. See [development](development
 
 ## Current limits
 
-Cards use the primary display and stack large, medium, then small. All three can
-overlap on short displays. Dragged positions are not saved; **Show widgets** or
+Cards use the primary display and wrap into rows. Six variants are available;
+font size scales their geometry. Large selections may exceed short displays.
+Dragged positions are not saved; **Show widgets** or
 display changes reset placement. The medium card shows at most two providers,
 although totals include all providers.
 

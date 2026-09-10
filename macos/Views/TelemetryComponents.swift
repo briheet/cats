@@ -2,7 +2,7 @@ import SwiftUI
 
 struct Brand: View {
     var body: some View {
-        Text("Cats").font(.system(size: 13, weight: .medium))
+        Text("Cats").catsFont(size: 13, weight: .medium)
     }
 }
 
@@ -11,7 +11,7 @@ struct Spend: View {
     let value: Double
     var size: CGFloat = 32
     var body: some View {
-        Text(Display.money(value)).font(.system(size: size, weight: .medium))
+        Text(Display.money(value)).catsFont(size: size, weight: .medium)
             .monospacedDigit().minimumScaleFactor(0.55).lineLimit(1)
     }
 }
@@ -56,7 +56,7 @@ struct ProviderIcon: View {
             systemName: name == "Claude"
                 ? "asterisk" : name == "Codex" ? "point.3.connected.trianglepath.dotted" : "cpu"
         )
-        .font(.system(size: 16, weight: .medium)).foregroundStyle(.white)
+        .catsFont(size: 16, weight: .medium).foregroundStyle(.white)
         .frame(width: 28, height: 28)
         .background(palette.provider(name).opacity(0.90), in: RoundedRectangle(cornerRadius: 7))
         .overlay(
@@ -69,24 +69,21 @@ struct ProviderIcon: View {
 struct ProviderRow: View {
     @Environment(\.catsPalette) private var palette
     let provider: ProviderUsage
-    var showBar = true
     var body: some View {
         HStack(spacing: 10) {
             ProviderIcon(name: provider.name)
-            Text(provider.name).font(.system(size: 12)).frame(width: 47, alignment: .leading)
+            Text(provider.name).catsFont(size: 12).frame(width: 47, alignment: .leading)
             VStack(alignment: .leading, spacing: 7) {
                 HStack {
-                    Text("\(Display.tokens(provider.tokens)) tokens").font(.system(size: 11))
+                    Text("\(Display.tokens(provider.tokens)) tokens").catsFont(size: 11)
                         .foregroundStyle(palette.muted)
                     Spacer(minLength: 6)
-                    Text(Display.money(provider.spendUsd)).font(.system(size: 13, weight: .medium))
+                    Text(Display.money(provider.spendUsd)).catsFont(size: 13, weight: .medium)
                         .monospacedDigit()
                 }
-                if showBar {
-                    ProgressView(
-                        value: provider.fraction.isFinite ? min(max(provider.fraction, 0), 1) : 0
-                    ).progressViewStyle(ThinProgressStyle()).tint(palette.provider(provider.name))
-                }
+                ProgressView(
+                    value: provider.fraction.isFinite ? min(max(provider.fraction, 0), 1) : 0
+                ).progressViewStyle(ThinProgressStyle()).tint(palette.provider(provider.name))
             }
         }
     }
@@ -96,7 +93,7 @@ struct StatusDot: View {
     @Environment(\.catsPalette) private var palette
     let status: String
     var body: some View {
-        Image(systemName: palette.status(status).0).font(.system(size: 9, weight: .medium))
+        Image(systemName: palette.status(status).0).catsFont(size: 9, weight: .medium)
             .foregroundStyle(palette.status(status).1).frame(width: 11).accessibilityLabel(status)
     }
 }
@@ -108,7 +105,7 @@ struct AgentRow: View {
     var body: some View {
         HStack(spacing: 9) {
             StatusDot(status: agent.status)
-            Text(agent.name).font(.system(size: 12)).lineLimit(1)
+            Text(agent.name).catsFont(size: 12).lineLimit(1)
             Spacer(minLength: 3)
             Text(agent.provider).foregroundStyle(palette.muted).frame(
                 width: 44, alignment: .leading)
@@ -118,7 +115,7 @@ struct AgentRow: View {
                 Text(Display.money(agent.spendUsd)).monospacedDigit().frame(
                     width: 49, alignment: .trailing)
             }
-        }.font(.system(size: 11)).accessibilityElement(children: .combine)
+        }.catsFont(size: 11).accessibilityElement(children: .combine)
     }
 }
 
@@ -135,7 +132,7 @@ struct AgentCounts: View {
                 state.failedAgents > 0
                     ? "\(state.failedAgents) failed" : "\(state.waitingAgents) waiting"
             ).foregroundStyle(palette.muted)
-        }.font(.system(size: 11))
+        }.catsFont(size: 11)
     }
 }
 
@@ -147,14 +144,14 @@ struct Metric: View {
     var body: some View {
         HStack(alignment: .top, spacing: 7) {
             if let icon {
-                Image(systemName: icon).font(.system(size: 15, weight: .light)).foregroundStyle(
+                Image(systemName: icon).catsFont(size: 15, weight: .light).foregroundStyle(
                     palette.slate
                 ).padding(.top, 1)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(value).font(.system(size: 13, weight: .medium)).lineLimit(1)
+                Text(value).catsFont(size: 13, weight: .medium).lineLimit(1)
                     .minimumScaleFactor(0.7)
-                Text(title).font(.system(size: 9)).foregroundStyle(palette.muted)
+                Text(title).catsFont(size: 9).foregroundStyle(palette.muted)
             }
         }
     }
@@ -210,7 +207,7 @@ struct StatusFooter: View {
     let reading: SnapshotReading
     var body: some View {
         if let warning = reading.warning {
-            Text(warning).font(.system(size: 9)).foregroundStyle(palette.warning)
+            Text(warning).catsFont(size: 9).foregroundStyle(palette.warning)
                 .lineLimit(2).help(warning)
         }
     }
@@ -223,13 +220,12 @@ struct EmptyTelemetry: View {
         VStack(alignment: .leading, spacing: 10) {
             Brand()
             Spacer(minLength: 0)
-            Text(reading.warning ?? "No usage yet").font(
-                .system(size: 15, weight: .medium))
+            Text(reading.warning ?? "No usage yet").catsFont(size: 15, weight: .medium)
             Text(
                 reading.warning != nil
                     ? "Check collector status and configuration."
                     : "Start Claude or Codex\nto begin tracking."
-            ).font(.system(size: 11)).foregroundStyle(palette.muted)
+            ).catsFont(size: 11).foregroundStyle(palette.muted)
             Spacer(minLength: 0)
         }.frame(maxWidth: .infinity, alignment: .leading)
     }

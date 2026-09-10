@@ -37,7 +37,9 @@ Dir.mktmpdir('cats-profile-') do |dir|
   snapshot = File.join(dir, 'cats-state.json')
   File.write(snapshot, JSON.generate(state))
   File.write(File.join(dir, 'heartbeat'), Time.now.to_i.to_s)
-  env = {'CATS_DATA_DIR' => dir, 'CATS_EXTERNAL_COLLECTOR' => '1', 'CATS_WIDGETS' => 'large,medium,small'}
+  widgets = ENV.fetch('CATS_WIDGETS', 'large,medium,small')
+  report[:widgets] = widgets
+  env = {'CATS_DATA_DIR' => dir, 'CATS_EXTERNAL_COLLECTOR' => '1', 'CATS_WIDGETS' => widgets}
   ui = File.join(root, 'build/Build/Products/Release/Cats.app/Contents/MacOS/Cats')
   pid = Process.spawn(env, ui, out: File.join(output, 'ui.log'), err: [:child, :out])
   begin

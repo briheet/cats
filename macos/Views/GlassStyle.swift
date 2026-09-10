@@ -11,7 +11,6 @@ struct CatsPalette {
             blue: Double(rgb & 255) / 255)
     }
     var mint: Color { color("accent", fallback: Color(red: 0.20, green: 0.81, blue: 0.65)) }
-    var teal: Color { color("secondary", fallback: Color(red: 0.32, green: 0.72, blue: 0.76)) }
     var coral: Color { color("claude", fallback: Color(red: 0.95, green: 0.49, blue: 0.45)) }
     var blue: Color { color("codex", fallback: Color(red: 0.30, green: 0.65, blue: 1)) }
     var slate: Color { color("muted", fallback: Color(red: 0.52, green: 0.59, blue: 0.75)) }
@@ -103,7 +102,7 @@ struct GlassCard<Content: View>: View {
 
 struct GlassControlStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.system(size: 12, weight: .medium))
+        configuration.label.catsFont(size: 12, weight: .medium)
             .padding(.horizontal, 13).padding(.vertical, 9)
             .background(
                 .primary.opacity(configuration.isPressed ? 0.14 : 0.06),
@@ -122,7 +121,7 @@ struct GlassAction<Label: View>: View {
         #if compiler(>=6.2)
             if #available(macOS 26, *) {
                 Button(action: action) {
-                    label.font(.system(size: 12, weight: .medium)).padding(.horizontal, 6).padding(
+                    label.catsFont(size: 12, weight: .medium).padding(.horizontal, 6).padding(
                         .vertical, 3)
                 }.buttonStyle(.glass)
             } else {

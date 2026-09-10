@@ -15,3 +15,8 @@ No synthetic activity descriptions, daily comparisons, or billing accuracy claim
 References: [SwiftUI stacks](https://developer.apple.com/documentation/swiftui/creating-performant-scrollable-stacks)
 and [Instruments guidance](https://developer.apple.com/videos/play/wwdc2025/306/).
 Five rows use ordinary stacks; lazy layout adds no useful benefit at this size.
+
+Variant pass: small spend/agents/burn rate, medium providers/agents, large overview.
+Use consistent top-aligned headings and warning space. Typography keeps a 12-point
+base hierarchy and scales cards proportionally; unknown font families fall back.
+Follow [Apple's glanceable widget hierarchy](https://developer.apple.com/design/human-interface-guidelines/widgets).

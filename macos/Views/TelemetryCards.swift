@@ -8,9 +8,9 @@ struct SmallCardContent: View {
         let diameter: CGFloat = reading.warning == nil ? 92 : 80
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Cats").font(.system(size: 13, weight: .semibold))
+                Text("Cats").catsFont(size: 13, weight: .semibold)
                 Spacer()
-                Text("Today").font(.system(size: 11)).foregroundStyle(palette.muted)
+                Text("Today").catsFont(size: 11).foregroundStyle(palette.muted)
             }
             ZStack {
                 Circle().stroke(palette.muted.opacity(0.18), lineWidth: 6)
@@ -23,7 +23,7 @@ struct SmallCardContent: View {
                 VStack(spacing: 2) {
                     Spend(value: reading.state.today.spendUsd, size: 21)
                     Text("of \(Display.money(reading.state.today.budgetUsd))")
-                        .font(.system(size: 9)).foregroundStyle(palette.muted)
+                        .catsFont(size: 9).foregroundStyle(palette.muted)
                 }
             }.frame(width: diameter, height: diameter).frame(maxWidth: .infinity)
                 .accessibilityElement(children: .combine)
@@ -32,7 +32,7 @@ struct SmallCardContent: View {
                 StatusFooter(reading: reading)
             } else {
                 Text("\(reading.state.activeAgents) running")
-                    .font(.system(size: 11)).foregroundStyle(palette.muted)
+                    .catsFont(size: 11).foregroundStyle(palette.muted)
             }
         }
     }
@@ -49,7 +49,7 @@ struct ProviderCardContent: View {
                 HStack {
                     Brand()
                     Spacer()
-                    Text("Today").font(.system(size: 11)).foregroundStyle(palette.muted)
+                    Text("Today").catsFont(size: 11).foregroundStyle(palette.muted)
                 }
                 Spacer(minLength: 5)
                 VStack(spacing: 8) {
@@ -89,7 +89,7 @@ struct OverviewCardContent: View {
                 if reading.warning != nil {
                     StatusFooter(reading: reading)
                 } else {
-                    Text("Today · estimated spend").font(.system(size: 10))
+                    Text("Today · estimated spend").catsFont(size: 10)
                         .foregroundStyle(palette.muted)
                 }
             }
@@ -98,12 +98,12 @@ struct OverviewCardContent: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Spend(value: reading.state.today.spendUsd, size: 28)
                         Text("of \(Display.money(reading.state.today.budgetUsd)) budget")
-                            .font(.system(size: 10)).foregroundStyle(palette.muted)
+                            .catsFont(size: 10).foregroundStyle(palette.muted)
                         BudgetBar(today: reading.state.today)
                         Sparkline(values: reading.state.history.hourlySpend, fill: true)
                             .frame(height: 54)
                         Text("\(Display.money(reading.state.today.burnRatePerHour))/hr")
-                            .font(.system(size: 11, weight: .medium))
+                            .catsFont(size: 11, weight: .medium)
                             .foregroundStyle(palette.muted)
                     }
                 }.frame(width: 180)
@@ -111,7 +111,7 @@ struct OverviewCardContent: View {
                     VStack(alignment: .leading, spacing: 6) {
                         AgentCounts(state: reading.state).padding(.bottom, 4)
                         if reading.state.agents.isEmpty {
-                            Text("No recent agents").font(.system(size: 12))
+                            Text("No recent agents").catsFont(size: 12)
                                 .foregroundStyle(palette.muted).padding(.top, 12)
                         }
                         ForEach(reading.state.agents.prefix(5)) { agent in
@@ -119,14 +119,14 @@ struct OverviewCardContent: View {
                         }
                         if reading.state.agents.count > 5 {
                             Text("+\(reading.state.agents.count - 5) more in dashboard")
-                                .font(.system(size: 9)).foregroundStyle(palette.muted)
+                                .catsFont(size: 9).foregroundStyle(palette.muted)
                         }
                     }
                 }.frame(width: 300)
                 OverviewSection {
                     VStack(alignment: .leading, spacing: 10) {
                         if reading.state.providers.isEmpty {
-                            Text("No provider usage yet").font(.system(size: 11))
+                            Text("No provider usage yet").catsFont(size: 11)
                                 .foregroundStyle(palette.muted)
                         }
                         ForEach(reading.state.providers.prefix(2)) { provider in
@@ -135,17 +135,17 @@ struct OverviewCardContent: View {
                                     Text(provider.name)
                                     Spacer()
                                     Text(Display.money(provider.spendUsd)).monospacedDigit()
-                                }.font(.system(size: 11))
+                                }.catsFont(size: 11)
                                 ProgressView(value: min(max(provider.fraction, 0), 1))
                                     .progressViewStyle(ThinProgressStyle(height: 5))
                                     .tint(palette.provider(provider.name))
                                 Text("\(Display.tokens(provider.tokens)) tokens")
-                                    .font(.system(size: 9)).foregroundStyle(palette.muted)
+                                    .catsFont(size: 9).foregroundStyle(palette.muted)
                             }
                         }
                         Hairline()
                         Text("\(Display.tokens(reading.state.today.tokensTotal)) tokens today")
-                            .font(.system(size: 11, weight: .medium))
+                            .catsFont(size: 11, weight: .medium)
                     }
                 }
             }
@@ -173,21 +173,20 @@ struct BudgetPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
-                Text("Budget").font(.system(size: 13, weight: .medium))
+                Text("Budget").catsFont(size: 13, weight: .medium)
                 Spacer()
-                Text("Daily limit").font(.system(size: 11)).foregroundStyle(palette.muted)
+                Text("Daily limit").catsFont(size: 11).foregroundStyle(palette.muted)
             }
             HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Spend(value: today.spendUsd, size: 28)
                 Text(
                     "/ \(Display.money(today.budgetUsd).replacingOccurrences(of: ".00", with: ""))"
-                ).font(.system(size: 21, weight: .light)).foregroundStyle(palette.muted)
+                ).catsFont(size: 21, weight: .light).foregroundStyle(palette.muted)
             }
             HStack(spacing: 10) {
                 BudgetBar(today: today)
-                Text(today.budgetFraction.formatted(.percent.precision(.fractionLength(0)))).font(
-                    .system(size: 11)
-                ).foregroundStyle(palette.muted)
+                Text(today.budgetFraction.formatted(.percent.precision(.fractionLength(0))))
+                    .catsFont(size: 11).foregroundStyle(palette.muted)
             }
             HStack {
                 Metric(
@@ -210,16 +209,16 @@ struct ControlPanel: View {
         VStack(spacing: 17) {
             HStack(spacing: 7) {
                 StatusDot(status: "running")
-                Text("\(reading.state.activeAgents) agents running").font(
-                    .system(size: 12, weight: .medium))
+                Text("\(reading.state.activeAgents) agents running").catsFont(
+                    size: 12, weight: .medium)
                 Spacer()
-                Text(Display.money(reading.state.today.spendUsd)).font(
-                    .system(size: 12, weight: .medium))
-                Text("today").font(.system(size: 11)).foregroundStyle(palette.muted)
+                Text(Display.money(reading.state.today.spendUsd)).catsFont(
+                    size: 12, weight: .medium)
+                Text("today").catsFont(size: 11).foregroundStyle(palette.muted)
             }
             ForEach(reading.state.agents.prefix(3)) { AgentRow(agent: $0, showSpend: false) }
             if reading.state.agents.isEmpty {
-                Text("Your next session will appear here.").font(.system(size: 11)).foregroundStyle(
+                Text("Your next session will appear here.").catsFont(size: 11).foregroundStyle(
                     palette.muted)
             }
             Hairline()

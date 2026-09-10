@@ -3,7 +3,8 @@
 Local AI usage, at a glance. Cats reads Claude Code, Codex, and local-agent logs
 and displays token usage, estimated spend, and session activity on your desktop.
 
-Choose a large overview, medium provider card, or small spend card. Use Nord,
+Choose one large overview, two medium variants, or three small variants. Configure
+font family and size, and use Nord,
 Rosé Pine, or your own palette. Cards sit behind normal windows; the menu bar and
 dashboard provide details and managed-agent controls.
 

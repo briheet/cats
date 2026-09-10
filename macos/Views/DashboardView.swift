@@ -15,7 +15,7 @@ struct DashboardView: View {
                 HStack(spacing: 6) {
                     StatusDot(status: model.reading.unavailable ? "waiting" : "running")
                     Text(model.reading.unavailable ? "Collector offline" : "Tracking locally")
-                        .font(.system(size: 11)).foregroundStyle(palette.muted)
+                        .catsFont(size: 11).foregroundStyle(palette.muted)
                 }
             }.padding(.top, 8)
             HStack(spacing: 18) {
@@ -25,16 +25,16 @@ struct DashboardView: View {
             GlassCard {
                 VStack(alignment: .leading, spacing: 18) {
                     HStack {
-                        Text("Agents").font(.system(size: 14, weight: .medium))
+                        Text("Agents").catsFont(size: 14, weight: .medium)
                         Spacer()
                         AgentCounts(state: state).frame(width: 235)
                     }
                     Hairline()
                     if state.agents.isEmpty {
                         VStack(spacing: 8) {
-                            Text("Your next session starts here.").font(
-                                .system(size: 14, weight: .medium))
-                            Text("Start Claude, Codex, or a local agent.").font(.system(size: 12))
+                            Text("Your next session starts here.").catsFont(
+                                size: 14, weight: .medium)
+                            Text("Start Claude, Codex, or a local agent.").catsFont(size: 12)
                                 .foregroundStyle(palette.muted)
                         }.frame(maxWidth: .infinity, minHeight: 130)
                     } else {
@@ -46,7 +46,7 @@ struct DashboardView: View {
                     }
                     Hairline()
                     HStack {
-                        Text("Managed agents").font(.system(size: 11)).foregroundStyle(
+                        Text("Managed agents").catsFont(size: 11).foregroundStyle(
                             palette.muted
                         )
                         .help("Pause and resume apply to commands launched with cats run.")

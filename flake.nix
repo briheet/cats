@@ -114,6 +114,22 @@
             medium.enable = false;
             small.enable = false;
           };
+          variantsHome = makeHome {
+            small.enable = true;
+            small.variants = [
+              "spend"
+              "agents"
+              "burn-rate"
+              "spend"
+            ];
+            medium.variants = [
+              "providers"
+              "agents"
+            ];
+            font.family = "Helvetica Neue";
+            font.size = 16;
+            font.package = pkgs.nerd-fonts.jetbrains-mono;
+          };
         in
         {
           collector = self.packages.${system}.cats;
@@ -127,6 +143,15 @@
               home.config.launchd.agents.cats-app.config.EnvironmentVariables.CATS_WIDGETS == "large,medium";
             assert smallHome.config.launchd.agents.cats-app.config.EnvironmentVariables.CATS_WIDGETS == "small";
             assert emptyHome.config.launchd.agents.cats-app.config.EnvironmentVariables.CATS_WIDGETS == "";
+            assert
+              variantsHome.config.launchd.agents.cats-app.config.EnvironmentVariables.CATS_WIDGETS
+              == "large,medium,medium-agents,small,small-agents,small-burn-rate";
+            assert
+              variantsHome.config.launchd.agents.cats-app.config.EnvironmentVariables.CATS_FONT_FAMILY
+              == "Helvetica Neue";
+            assert
+              variantsHome.config.launchd.agents.cats-app.config.EnvironmentVariables.CATS_FONT_SIZE == "16";
+            assert builtins.elem pkgs.nerd-fonts.jetbrains-mono variantsHome.config.home.packages;
             pkgs.runCommand "cats-home-manager-check" { } ''
               mkdir -p config/themes
               cp ${home.config.xdg.configFile."cats/config.toml".source} config/config.toml

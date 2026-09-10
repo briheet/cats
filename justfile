@@ -65,7 +65,7 @@ refresh-smoke:
 preview:
     mkdir -p build
     cargo run --quiet -- themes > build/themes.json
-    env -u SDKROOT -u DEVELOPER_DIR /usr/bin/swiftc -parse-as-library macos/Shared/*.swift macos/Views/{DesktopCard,GlassStyle,TelemetryComponents,TelemetryCards}.swift macos/Preview/*.swift scripts/render.swift -o build/render-preview
+    env -u SDKROOT -u DEVELOPER_DIR /usr/bin/swiftc -parse-as-library macos/Shared/*.swift macos/Views/{DesktopCard,GlassStyle,TelemetryComponents,TelemetryCards,Typography,CardVariants}.swift macos/Preview/*.swift scripts/render.swift -o build/render-preview
     build/render-preview
 
 # Exercise live ingestion and managed process controls in temporary storage.
@@ -80,6 +80,10 @@ desktop-smoke:
 # Check every combination of independently enabled desktop cards.
 desktop-selection-smoke:
     for selection in '' large medium small large,medium large,small medium,small large,medium,small; do CATS_WIDGETS="$selection" bash scripts/desktop-smoke.sh; done
+
+desktop-variants-smoke:
+    for selection in medium-agents small-agents small-burn-rate large,medium,medium-agents,small,small-agents,small-burn-rate; do CATS_WIDGETS="$selection" bash scripts/desktop-smoke.sh; done
+    for size in 10 16 20; do CATS_FONT_SIZE="$size" CATS_FONT_FAMILY='Helvetica Neue' CATS_WIDGETS=small-agents bash scripts/desktop-smoke.sh; done
 
 # Includes two 60-second reload cycles in isolated temporary storage.
 theme-smoke:
