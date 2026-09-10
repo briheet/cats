@@ -2,6 +2,7 @@ pub mod aggregation;
 pub mod cli;
 pub mod collectors;
 pub mod config;
+pub mod domain;
 pub mod profiling;
 pub mod snapshot;
 pub mod storage;

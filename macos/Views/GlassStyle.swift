@@ -30,6 +30,7 @@ struct CatsPalette {
         switch value {
         case "running": return ("circle.fill", mint)
         case "waiting": return ("circle.dotted", slate)
+        case "idle": return ("circle", slate)
         case "failed": return ("exclamationmark.circle.fill", error)
         default: return ("checkmark", slate)
         }

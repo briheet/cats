@@ -1,44 +1,8 @@
 import SwiftUI
 
-struct BrandMark: View {
-    @Environment(\.catsPalette) private var palette
-    @Environment(\.colorScheme) private var scheme
-    var size: CGFloat = 29
-    var body: some View {
-        Text("C").font(.system(size: size * 0.72, weight: .semibold))
-            .foregroundStyle(
-                palette.color(
-                    "text",
-                    fallback: scheme == .dark ? Color(red: 0.86, green: 0.91, blue: 1) : palette.ink
-                )
-            )
-            .frame(width: size, height: size)
-            .background(
-                palette.surface(scheme).opacity(scheme == .dark ? 0.85 : 0.45),
-                in: RoundedRectangle(cornerRadius: size * 0.22)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: size * 0.22).strokeBorder(
-                    .white.opacity(0.06), lineWidth: 0.5)
-            )
-            .accessibilityHidden(true)
-    }
-}
-
 struct Brand: View {
-    @Environment(\.catsPalette) private var palette
-    var subtitle: String? = nil
     var body: some View {
-        HStack(spacing: 9) {
-            BrandMark()
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Cats").font(.system(size: 13, weight: .medium))
-                if let subtitle {
-                    Text(subtitle).font(.system(size: 10)).foregroundStyle(palette.muted).lineLimit(
-                        1)
-                }
-            }
-        }
+        Text("Cat").font(.system(size: 13, weight: .medium))
     }
 }
 
@@ -245,42 +209,26 @@ struct StatusFooter: View {
     @Environment(\.catsPalette) private var palette
     let reading: SnapshotReading
     var body: some View {
-        HStack(spacing: 4) {
-            if reading.invalid {
-                Image(systemName: "exclamationmark.triangle")
-                Text("Snapshot unreadable")
-            } else if reading.unavailable {
-                Image(systemName: "clock")
-                Text("Collector unavailable")
-            } else if reading.state.collectorErrors > 0 {
-                Image(systemName: "exclamationmark.triangle")
-                Text("A source needs attention")
-            } else if reading.state.today.unpricedEvents > 0 {
-                Text("Partial estimate · unknown pricing")
-            } else {
-                Text("Estimated spend")
-            }
-            Spacer(minLength: 0)
-            if reading.state.generatedAt > 0 {
-                Text(Date(timeIntervalSince1970: reading.state.generatedAt), style: .relative)
-                    .lineLimit(1)
-            }
-        }.font(.system(size: 9)).foregroundStyle(palette.muted)
+        if let warning = reading.warning {
+            Text(warning).font(.system(size: 9)).foregroundStyle(palette.warning)
+                .lineLimit(2).help(warning)
+        }
     }
 }
 
 struct EmptyTelemetry: View {
     @Environment(\.catsPalette) private var palette
-    var unavailable = false
+    let reading: SnapshotReading
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Brand(subtitle: "Your AI workspace")
+            Brand()
             Spacer(minLength: 0)
-            Text(unavailable ? "Collector unavailable" : "No usage yet").font(
+            Text(reading.warning ?? "No usage yet").font(
                 .system(size: 15, weight: .medium))
             Text(
-                unavailable
-                    ? "Open Cats to start tracking." : "Start Claude or Codex\nto begin tracking."
+                reading.warning != nil
+                    ? "Check collector status and configuration."
+                    : "Start Claude or Codex\nto begin tracking."
             ).font(.system(size: 11)).foregroundStyle(palette.muted)
             Spacer(minLength: 0)
         }.frame(maxWidth: .infinity, alignment: .leading)

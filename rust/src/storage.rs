@@ -1,3 +1,4 @@
+use crate::domain::ProviderKind;
 use crate::{Result, collectors::Cursor, telemetry::Event};
 use rusqlite::{Connection, OptionalExtension, params};
 use std::path::Path;
@@ -33,7 +34,12 @@ impl Store {
     }
 
     /// Commit cursor and lifecycle metadata in the same transaction as usage.
-    pub fn save_cursor(db: &Connection, path: &str, provider: &str, cursor: &Cursor) -> Result<()> {
+    pub fn save_cursor(
+        db: &Connection,
+        path: &str,
+        provider: ProviderKind,
+        cursor: &Cursor,
+    ) -> Result<()> {
         db.execute(
             "INSERT INTO cursors (path, state) VALUES (?1, ?2)
              ON CONFLICT(path) DO UPDATE SET state=excluded.state",

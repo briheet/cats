@@ -1,4 +1,5 @@
 use crate::Result;
+use crate::domain::ProviderKind;
 use serde::{Deserialize, Serialize};
 use std::{env, path::PathBuf};
 
@@ -104,11 +105,11 @@ impl Config {
             budget_usd,
         })
     }
-    pub fn roots(&self) -> [(&str, &std::path::Path); 3] {
+    pub fn roots(&self) -> [(ProviderKind, &std::path::Path); 3] {
         [
-            ("Claude", &self.claude_dir),
-            ("Codex", &self.codex_dir),
-            ("Local", &self.local_dir),
+            (ProviderKind::Claude, &self.claude_dir),
+            (ProviderKind::Codex, &self.codex_dir),
+            (ProviderKind::Local, &self.local_dir),
         ]
     }
 }

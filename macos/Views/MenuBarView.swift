@@ -9,7 +9,7 @@ struct MenuBarView: View {
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Brand(subtitle: "Your AI workspace")
+            Brand()
             ControlPanel(
                 reading: model.reading, pause: { model.send(.pause) },
                 resume: { model.send(.resume) }, open: { showDashboard() })

@@ -1,3 +1,4 @@
+use crate::domain::{AgentStatus, BudgetState, ProviderKind};
 use crate::{Result, storage::Store};
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
@@ -7,7 +8,7 @@ pub struct Today {
     pub spend_usd: f64,
     pub budget_usd: f64,
     pub budget_fraction: f64,
-    pub budget_state: String,
+    pub budget_state: BudgetState,
     pub burn_rate_per_hour: f64,
     pub projected_daily_spend: Option<f64>,
     pub tokens_total: u64,
@@ -18,7 +19,7 @@ pub struct Today {
 }
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct Provider {
-    pub name: String,
+    pub name: ProviderKind,
     pub spend_usd: f64,
     pub tokens: u64,
     pub fraction: f64,
@@ -29,8 +30,8 @@ pub struct Provider {
 pub struct Agent {
     pub id: String,
     pub name: String,
-    pub provider: String,
-    pub status: String,
+    pub provider: ProviderKind,
+    pub status: AgentStatus,
     pub elapsed_seconds: i64,
     pub tokens: u64,
     pub spend_usd: f64,
@@ -100,20 +101,25 @@ pub fn aggregate_between(
     state.active_agents = state
         .agents
         .iter()
-        .filter(|a| a.status == "running")
+        .filter(|a| a.status == AgentStatus::Running)
         .count() as u64;
     state.waiting_agents = state
         .agents
         .iter()
-        .filter(|a| a.status == "waiting")
+        .filter(|a| a.status == AgentStatus::Waiting)
         .count() as u64;
-    state.failed_agents = state.agents.iter().filter(|a| a.status == "failed").count() as u64;
+    state.failed_agents = state
+        .agents
+        .iter()
+        .filter(|a| a.status == AgentStatus::Failed)
+        .count() as u64;
     for provider in &mut state.providers {
         provider.agent_count = state
             .agents
             .iter()
             .filter(|a| {
-                a.provider == provider.name && matches!(a.status.as_str(), "running" | "waiting")
+                a.provider == provider.name
+                    && matches!(a.status, AgentStatus::Running | AgentStatus::Waiting)
             })
             .count() as u64;
     }
@@ -148,15 +154,14 @@ fn read_today(
     today.budget_usd = budget;
     today.budget_fraction = (today.spend_usd / budget).max(0.);
     today.budget_state = if today.budget_fraction > 1. {
-        "exceeded"
+        BudgetState::Exceeded
     } else if today.budget_fraction >= 0.9 {
-        "warning"
+        BudgetState::Warning
     } else if today.budget_fraction >= 0.7 {
-        "elevated"
+        BudgetState::Elevated
     } else {
-        "normal"
-    }
-    .into();
+        BudgetState::Normal
+    };
     today.tokens_total = today.tokens_input + today.tokens_output + today.tokens_cache;
     let (recent, samples, first): (f64, i64, Option<i64>) = db.query_row(
         "SELECT COALESCE(SUM(cost),0), COUNT(cost), MIN(timestamp)
@@ -199,15 +204,15 @@ fn read_providers(
             })
         })?
         .collect::<std::result::Result<_, _>>()?;
-    for name in ["Claude", "Codex"] {
+    for name in [ProviderKind::Claude, ProviderKind::Codex] {
         if !providers.iter().any(|p| p.name == name) {
             providers.push(Provider {
-                name: name.into(),
+                name,
                 ..Provider::default()
             });
         }
     }
-    providers.sort_by(|a, b| a.name.cmp(&b.name));
+    providers.sort_by_key(|provider| provider.name);
     for p in &mut providers {
         p.fraction = if spend_usd > 0. {
             p.spend_usd / spend_usd
@@ -228,18 +233,20 @@ fn read_agents(db: &rusqlite::Connection, now: i64, midnight: i64) -> Result<Vec
     )?;
     let mut agents: Vec<Agent> = query
         .query_map([midnight.min(now - 86400)], |row| {
-            let mut status: String = row.get(3)?;
+            let stored_status: AgentStatus = row.get(3)?;
             let started: i64 = row.get(4)?;
             let updated: i64 = row.get(5)?;
-            // Silence is not proof of completion; surface it as waiting.
-            if status == "running" && now - updated > 300 {
-                status = "waiting".into();
-            }
-            let end = if status == "running" { now } else { updated };
+            let provider: ProviderKind = row.get(2)?;
+            let status = stored_status.at(provider, now - updated);
+            let end = if status == AgentStatus::Running {
+                now
+            } else {
+                updated
+            };
             Ok(Agent {
                 id: row.get(0)?,
                 name: row.get(1)?,
-                provider: row.get(2)?,
+                provider,
                 status,
                 elapsed_seconds: (end - started).max(0),
                 tokens: row.get::<_, i64>(6)? as u64,
@@ -247,12 +254,7 @@ fn read_agents(db: &rusqlite::Connection, now: i64, midnight: i64) -> Result<Vec
             })
         })?
         .collect::<std::result::Result<_, _>>()?;
-    agents.sort_by_key(|a| match a.status.as_str() {
-        "running" => 0,
-        "waiting" => 1,
-        "failed" => 2,
-        _ => 3,
-    });
+    agents.sort_by_key(|a| a.status.display_order());
     Ok(agents)
 }
 

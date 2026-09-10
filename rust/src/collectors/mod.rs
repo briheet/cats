@@ -1,3 +1,4 @@
+use crate::domain::{AgentStatus, ProviderKind};
 use crate::{
     Result,
     storage::Store,
@@ -6,17 +7,18 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-mod parsers;
-pub use parsers::parse;
-
-const MAX_LINE_BYTES: usize = 1_048_576;
-const MAX_BATCH_BYTES: usize = 4 * MAX_LINE_BYTES;
 use std::{
     fs::{self, File},
     io::{BufRead, BufReader, Read, Seek, SeekFrom},
     os::unix::fs::MetadataExt,
     path::{Path, PathBuf},
 };
+
+mod parsers;
+pub use parsers::{ClaudeParser, CodexParser, LocalParser, Parser, parse};
+
+const MAX_LINE_BYTES: usize = 1_048_576;
+const MAX_BATCH_BYTES: usize = 4 * MAX_LINE_BYTES;
 
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 pub struct Cursor {
@@ -28,7 +30,7 @@ pub struct Cursor {
     pub total: Tokens,
     pub started: i64,
     pub updated: i64,
-    pub status: String,
+    pub status: AgentStatus,
     pub skipping: bool,
 }
 
@@ -65,7 +67,7 @@ pub struct Batch {
     pub more: bool,
 }
 
-pub fn ingest(store: &mut Store, path: &Path, provider: &str) -> Result<Batch> {
+pub fn ingest(store: &mut Store, path: &Path, provider: ProviderKind) -> Result<Batch> {
     let file = File::open(path)?;
     let metadata = file.metadata()?;
     let key = path.to_string_lossy();
@@ -119,7 +121,7 @@ pub fn ingest(store: &mut Store, path: &Path, provider: &str) -> Result<Batch> {
                     count += Store::insert(&tx, &e)?;
                 }
             }
-            Err(_) => tracing::warn!(collector = provider, "Skipped malformed telemetry record"),
+            Err(_) => tracing::warn!(collector = %provider, "Skipped malformed telemetry record"),
         }
     }
     Store::save_cursor(&tx, &key, provider, &cursor)?;

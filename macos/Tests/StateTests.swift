@@ -3,6 +3,21 @@ import XCTest
 @testable import CatsShared
 
 final class StateTests: XCTestCase {
+    func testSnapshotWarnings() {
+        var reading = SnapshotReading(state: .empty)
+        XCTAssertNil(reading.warning)
+        reading.state.today.unpricedEvents = 1
+        XCTAssertEqual(reading.warning, "Partial estimate · unknown pricing")
+        reading.state.collectorErrors = 1
+        XCTAssertEqual(reading.warning, "A source needs attention")
+        reading.unavailable = true
+        XCTAssertEqual(reading.warning, "Collector unavailable")
+        reading.invalid = true
+        XCTAssertEqual(reading.warning, "Snapshot unreadable")
+        reading.accessDenied = true
+        XCTAssertEqual(reading.warning, "Storage access denied")
+    }
+
     private func temporaryStore() throws -> SnapshotStore {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString)

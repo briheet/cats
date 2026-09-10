@@ -1,24 +1,40 @@
-# Distribution
+# Distribution and updates
 
-Cats is a source-built macOS desktop overlay, not a WidgetKit extension.
-No Apple Developer account, Developer ID certificate, provisioning profile,
-App Group or notarization workflow is required for the Home Manager installation.
+## Build outputs
 
-- `nix build` builds the collector and desktop UI.
-- `nix build .#cats-desktop` builds the native Swift/AppKit executable.
-- Import `homeManagerModules.default` and set `programs.cats.enable = true`.
-- `just build` builds an optional local app bundle using Apple's Swift compiler.
+| Build | Output |
+| --- | --- |
+| `nix build` | Collector and desktop UI executables |
+| `nix build .#cats` | Rust collector only |
+| `nix build .#cats-desktop` | Swift/AppKit UI with its collector dependency |
+| `just build` | Local `build/Build/Products/Release/Cats.app` bundle |
 
-The compiler/linker supplies the minimal ad-hoc executable signatures required
-on Apple Silicon. This is not Developer ID signing and does not establish a
-trusted publisher for separately downloaded app bundles. Do not disable
-Gatekeeper or other macOS security controls.
+Home Manager launches executables from the Nix store. It does not install a
+WidgetKit extension or copy an app bundle into Applications.
 
-The Home Manager module starts ordinary per-user launch agents from the Nix
-store. It does not copy apps into Applications, register extensions, or read
-other apps' containers. Permission denial stops collection/polling; launchd
-does not restart failed processes.
+The compiler/linker supplies Apple Silicon's ad-hoc executable signatures. No
+Apple Developer account, Developer ID certificate, provisioning profile, or
+notarization service is used. A separately downloaded app bundle is not thereby
+a trusted-publisher release. Do not disable Gatekeeper.
 
-See [configuration](configuration.md) for setup and migration from the former
-signed-widget architecture. Old signing scripts and the notarization workflow
-have been removed. Desktop cards are not listed in Apple's Widget Gallery.
+The default Nix output is `aarch64-darwin`. The flake exposes `x86_64-darwin` when
+supplied Nixpkgs reports a version before 26.11; use the 26.05 line with compatible
+Home Manager for Intel. Intel Nix builds need separate verification.
+
+## Publish and consume a change
+
+1. Run the checks in [development](development.md).
+2. Review and commit source/docs only. Build output and `docs/*.png` are ignored.
+3. Push and check GitHub CI. A local build does not prove remote CI passed.
+
+Consumers stay on the commit in their lock file until they update it. In the
+consumer's configuration repository:
+
+```sh
+nix flake update cats
+nix build .#darwinConfigurations.YOUR_HOST.system --no-link
+sudo darwin-rebuild switch --flake .#YOUR_HOST
+```
+
+Build validates a generation; switch activates it. Launchd disable flags survive
+rebuilds—see [troubleshooting](nix-setup.md#troubleshooting).

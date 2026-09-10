@@ -48,7 +48,7 @@ pub fn run(args: &Cli, mut config: Config) -> Result<()> {
         }
     })?;
     let mut watched = Vec::new();
-    let mut pending: Vec<(String, PathBuf)> = Vec::new();
+    let mut pending: Vec<(cats::domain::ProviderKind, PathBuf)> = Vec::new();
     let mut retry: HashMap<PathBuf, Retry> = HashMap::new();
     let mut reconcile = Instant::now() - Duration::from_secs(60);
     let mut heartbeat = Instant::now() - Duration::from_secs(60);
@@ -69,11 +69,7 @@ pub fn run(args: &Cli, mut config: Config) -> Result<()> {
                 {
                     watched.push(root.to_path_buf());
                 }
-                pending.extend(
-                    collectors::files(root)?
-                        .into_iter()
-                        .map(|p| (provider.to_string(), p)),
-                );
+                pending.extend(collectors::files(root)?.into_iter().map(|p| (provider, p)));
             }
             reconcile = Instant::now();
         }
@@ -91,7 +87,7 @@ pub fn run(args: &Cli, mut config: Config) -> Result<()> {
                 continue;
             }
             let start = Instant::now();
-            match collectors::ingest(&mut store, &path, &provider) {
+            match collectors::ingest(&mut store, &path, provider) {
                 Ok(batch) => {
                     metrics.events += batch.events;
                     retry.remove(&path);
@@ -117,7 +113,7 @@ pub fn run(args: &Cli, mut config: Config) -> Result<()> {
                             ready_at: Instant::now() + Duration::from_secs(2u64.pow(attempts)),
                         },
                     );
-                    tracing::warn!(collector=provider, retry=attempts, %error, "Collection failed");
+                    tracing::warn!(collector=%provider, retry=attempts, %error, "Collection failed");
                 }
             }
             metrics.record("ingest_and_sqlite_write", start);
@@ -166,7 +162,7 @@ pub fn run(args: &Cli, mut config: Config) -> Result<()> {
                     for (provider, root) in config.roots() {
                         if path.starts_with(root) && path.extension().is_some_and(|x| x == "jsonl")
                         {
-                            pending.push((provider.into(), path.clone()));
+                            pending.push((provider, path.clone()));
                         }
                     }
                 }

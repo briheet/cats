@@ -20,7 +20,7 @@ import Foundation
         refresh()
         guard !reading.accessDenied else { return }
         startCollector()
-        timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in self?.refresh() }
         }
     }
@@ -37,7 +37,8 @@ import Foundation
 
     private func refresh() {
         guard let store else { return }
-        reading = store.read(previous: reading.state)
+        let next = store.read(previous: reading.state)
+        if next != reading { reading = next }
         if reading.accessDenied {
             stop()
             error =

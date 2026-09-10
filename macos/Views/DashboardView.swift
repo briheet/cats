@@ -10,7 +10,7 @@ struct DashboardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
             HStack(alignment: .center) {
-                Brand(subtitle: "Your AI workspace")
+                Brand()
                 Spacer()
                 HStack(spacing: 6) {
                     StatusDot(status: model.reading.unavailable ? "waiting" : "running")

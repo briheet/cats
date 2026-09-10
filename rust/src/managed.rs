@@ -1,6 +1,6 @@
 //! Launch and control only the child process group owned by this wrapper.
 use crate::shutdown;
-use cats::{Result, config::Config};
+use cats::{Result, config::Config, domain::AgentStatus};
 use serde::Deserialize;
 use std::{
     fs::{self, File},
@@ -53,7 +53,7 @@ fn monitor(config: &Config, name: &str, child: &mut std::process::Child) -> Resu
     );
     let path = config.local_dir.join(format!("{id}.jsonl"));
     File::options().create_new(true).append(true).open(&path)?;
-    let publish = |status: &str| -> Result<()> {
+    let publish = |status: AgentStatus| -> Result<()> {
         // Closing after each lifecycle record makes FSEvents deliver the update promptly.
         let mut file = File::options().append(true).open(&path)?;
         writeln!(
@@ -65,14 +65,14 @@ fn monitor(config: &Config, name: &str, child: &mut std::process::Child) -> Resu
         Ok(())
     };
     let mut paused = false;
-    publish("running")?;
+    publish(AgentStatus::Running)?;
     let mut last = Instant::now();
     loop {
         if let Some(status) = child.try_wait()? {
             publish(if status.success() {
-                "completed"
+                AgentStatus::Completed
             } else {
-                "failed"
+                AgentStatus::Failed
             })?;
             return if status.success() {
                 Ok(())
@@ -81,7 +81,7 @@ fn monitor(config: &Config, name: &str, child: &mut std::process::Child) -> Resu
             };
         }
         if shutdown::requested() {
-            publish("failed")?;
+            publish(AgentStatus::Failed)?;
             return Ok(());
         }
         let desired = fs::read_to_string(config.data_dir.join("cats-control.json"))
@@ -92,11 +92,19 @@ fn monitor(config: &Config, name: &str, child: &mut std::process::Child) -> Resu
             let signal = if pause { libc::SIGSTOP } else { libc::SIGCONT };
             if signal_group(child, signal).is_ok() {
                 paused = pause;
-                publish(if paused { "waiting" } else { "running" })?;
+                publish(if paused {
+                    AgentStatus::Waiting
+                } else {
+                    AgentStatus::Running
+                })?;
             }
         }
         if last.elapsed() >= Duration::from_secs(60) {
-            publish(if paused { "waiting" } else { "running" })?;
+            publish(if paused {
+                AgentStatus::Waiting
+            } else {
+                AgentStatus::Running
+            })?;
             last = Instant::now();
         }
         std::thread::sleep(Duration::from_secs(1));

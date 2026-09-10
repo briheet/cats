@@ -1,3 +1,4 @@
+use crate::domain::ProviderKind;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -57,7 +58,7 @@ pub fn label(s: &str) -> String {
 pub struct Event {
     pub id: String,
     pub timestamp: i64,
-    pub provider: String,
+    pub provider: ProviderKind,
     pub model: String,
     pub session: String,
     pub agent: String,

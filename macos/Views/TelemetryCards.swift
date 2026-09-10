@@ -5,9 +5,9 @@ struct SmallCardContent: View {
     let reading: SnapshotReading
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Cats").font(.system(size: 13, weight: .semibold))
+                Text("Cat").font(.system(size: 13, weight: .semibold))
                 Spacer()
                 Text("Today").font(.system(size: 11)).foregroundStyle(palette.muted)
             }
@@ -16,11 +16,12 @@ struct SmallCardContent: View {
             Text("of \(Display.money(reading.state.today.budgetUsd))")
                 .font(.system(size: 11)).foregroundStyle(palette.muted)
             Spacer(minLength: 0)
-            Text(
-                reading.unavailable
-                    ? "Collector unavailable" : "\(reading.state.activeAgents) running"
-            )
-            .font(.system(size: 11)).foregroundStyle(palette.muted)
+            if reading.warning != nil {
+                StatusFooter(reading: reading)
+            } else {
+                Text("\(reading.state.activeAgents) running")
+                    .font(.system(size: 11)).foregroundStyle(palette.muted)
+            }
         }
     }
 }
@@ -30,11 +31,11 @@ struct ProviderCardContent: View {
     let reading: SnapshotReading
     var body: some View {
         if !reading.state.hasUsage {
-            EmptyTelemetry(unavailable: reading.unavailable)
+            EmptyTelemetry(reading: reading)
         } else {
             VStack(spacing: 0) {
                 HStack {
-                    Brand(subtitle: "Usage by provider")
+                    Brand()
                     Spacer()
                     Text("Today").font(.system(size: 11)).foregroundStyle(palette.muted)
                 }
@@ -44,17 +45,21 @@ struct ProviderCardContent: View {
                 }
                 Spacer(minLength: 5)
                 Hairline()
-                HStack {
-                    Metric(
-                        title: "total tokens",
-                        value: Display.tokens(reading.state.today.tokensTotal),
-                        icon: "point.3.connected.trianglepath.dotted")
-                    Spacer()
-                    Metric(
-                        title: reading.unavailable ? "collector unavailable" : "burn rate",
-                        value: "\(Display.money(reading.state.today.burnRatePerHour))/hr",
-                        icon: "arrow.up")
-                }.padding(.top, 7)
+                if reading.warning != nil {
+                    StatusFooter(reading: reading).padding(.top, 7)
+                } else {
+                    HStack {
+                        Metric(
+                            title: "total tokens",
+                            value: Display.tokens(reading.state.today.tokensTotal),
+                            icon: "point.3.connected.trianglepath.dotted")
+                        Spacer()
+                        Metric(
+                            title: reading.unavailable ? "collector unavailable" : "burn rate",
+                            value: "\(Display.money(reading.state.today.burnRatePerHour))/hr",
+                            icon: "arrow.up")
+                    }.padding(.top, 7)
+                }
             }
         }
     }
@@ -65,16 +70,16 @@ struct OverviewCardContent: View {
     let reading: SnapshotReading
     var body: some View {
         if !reading.state.hasUsage && reading.state.agents.isEmpty {
-            EmptyTelemetry(unavailable: reading.unavailable)
+            EmptyTelemetry(reading: reading)
         } else {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Brand(subtitle: "Your AI workspace")
+                    Brand()
                     Spacer()
                     Spend(value: reading.state.today.spendUsd, size: 27)
                 }
                 HStack {
-                    Text("Spend today")
+                    Text("Estimated spend today")
                     Spacer()
                     Text("of \(Display.money(reading.state.today.budgetUsd))")
                 }.font(.system(size: 11)).foregroundStyle(palette.muted)

@@ -14,6 +14,15 @@ struct SnapshotReading: Equatable {
     var unavailable = false
     var invalid = false
     var accessDenied = false
+
+    var warning: String? {
+        if accessDenied { return "Storage access denied" }
+        if invalid { return "Snapshot unreadable" }
+        if unavailable { return "Collector unavailable" }
+        if state.collectorErrors > 0 { return "A source needs attention" }
+        if state.today.unpricedEvents > 0 { return "Partial estimate · unknown pricing" }
+        return nil
+    }
 }
 
 /// Reads snapshots from one explicit directory. No mutable global paths or App Groups.
