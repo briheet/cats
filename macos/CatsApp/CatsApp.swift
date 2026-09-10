@@ -1,65 +1,70 @@
+import AppKit
 import SwiftUI
-import WidgetKit
 
-@MainActor final class AppState: ObservableObject {
-    @Published var reading = SharedStorage.read()
-    @Published var error: String?
-    private var collector: Process?
-    private var timer: Timer?
-    private var lastReload = Date.distantPast
-    private var pendingReload = false
-
-    init() {
-        startCollector()
-        timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refresh() }
-        }
-    }
-    func startCollector() {
-        guard collector?.isRunning != true else { return }
-        // A Home Manager service can own collection independently of this host app.
-        guard SharedStorage.read().unavailable else { return }
-        let executable = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/cats")
-        guard FileManager.default.isExecutableFile(atPath: executable.path) else { error = "Collector missing. Rebuild Cats with scripts/build.sh."; return }
-        let process = Process()
-        process.executableURL = executable
-        var environment = ProcessInfo.processInfo.environment
-        environment["CATS_DATA_DIR"] = SharedStorage.directory.path
-        process.environment = environment
-        do { try process.run(); collector = process; error = nil }
-        catch { self.error = error.localizedDescription }
-    }
-    func refresh() {
-        let next = SharedStorage.read(previous: reading.state)
-        if next.state != reading.state || next.unavailable != reading.unavailable { pendingReload = true }
-        reading = next
-        if pendingReload && Date().timeIntervalSince(lastReload) >= 60 {
-            WidgetCenter.shared.reloadAllTimelines()
-            lastReload = Date(); pendingReload = false
-        }
-    }
-    func stop() { timer?.invalidate(); collector?.terminate() }
-    func command(_ value: String) {
-        do { try SharedStorage.command(value); error = nil }
-        catch { self.error = error.localizedDescription }
+@main enum CatsApp {
+    @MainActor static func main() {
+        let app = NSApplication.shared
+        let delegate = CatsDelegate()
+        app.delegate = delegate
+        app.setActivationPolicy(.accessory)
+        withExtendedLifetime(delegate) { app.run() }
     }
 }
 
-@main struct CatsApp: App {
-    @StateObject private var model = AppState()
-    var body: some Scene {
-        MenuBarExtra {
-            MenuBarView(model: model)
-        } label: {
-            HStack(spacing: 5) {
-                Text("C").font(.system(size: 13, weight: .semibold))
-                Text(model.reading.state.hasUsage ? Display.money(model.reading.state.today.spendUsd) : "Cats")
-            }
-        }.menuBarExtraStyle(.window)
-        Window("Cats", id: "cats") {
-            DashboardView(model: model)
-                .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in model.stop() }
-                .onOpenURL { _ in NSApplication.shared.activate(ignoringOtherApps: true) }
-        }.defaultSize(width: 820, height: 600).windowResizability(.contentSize).windowStyle(.hiddenTitleBar)
+@MainActor final class CatsDelegate: NSObject, NSApplicationDelegate {
+    private let model = AppState()
+    private var desktop: DesktopPanels?
+    private var dashboard: NSWindow?
+    private var statusItem: NSStatusItem?
+    private let popover = NSPopover()
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        model.start()
+        desktop = DesktopPanels(model: model)
+        desktop?.show()
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        item.button?.title = "Cats"
+        item.button?.target = self
+        item.button?.action = #selector(toggleMenu)
+        statusItem = item
+        popover.behavior = .transient
+        popover.contentViewController = NSHostingController(
+            rootView: MenuBarView(
+                model: model,
+                showDesktop: { [weak self] in self?.desktop?.show() },
+                showDashboard: { [weak self] in self?.showDashboard() }
+            ))
+    }
+
+    @objc private func toggleMenu() {
+        guard let button = statusItem?.button else { return }
+        if popover.isShown {
+            popover.performClose(nil)
+        } else {
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        }
+    }
+
+    private func showDashboard() {
+        if dashboard == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 820, height: 600),
+                styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = "Cats"
+            window.titlebarAppearsTransparent = true
+            window.isReleasedWhenClosed = false
+            window.contentView = NSHostingView(rootView: DashboardView(model: model))
+            window.center()
+            dashboard = window
+        }
+        dashboard?.makeKeyAndOrderFront(nil)
+        NSApplication.shared.activate(ignoringOtherApps: true)
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        model.stop()
     }
 }

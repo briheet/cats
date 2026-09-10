@@ -16,13 +16,13 @@ budget-usd = 20
 
 Run `cats config` to validate and print resolved settings without starting a collector or writing data. `cats --config /absolute/path/config.toml config` selects another file; `CATS_CONFIG` also works. CLI/environment budget and data-directory overrides take precedence over TOML. Explicit source-directory settings override the provider environment defaults. Unknown settings, invalid budgets, colors, theme names, and inheritance cycles are errors.
 
-Budget and theme changes reload within 60 seconds. Invalid edits retain the last valid configuration and emit a warning. Storage/source changes require a collector restart. Widgets update on their next system-controlled timeline refresh; the open app requests refreshes when snapshots change.
+Budget and theme changes reload within 60 seconds. Invalid edits retain the last valid configuration and emit a warning. Storage/source changes require a collector restart. Desktop panels read the resulting snapshot every five seconds.
 
-Do not change `data-dir` for ordinary desktop use: the sandboxed widget needs the shared App Group location. This advanced override is intended for isolated collector tests; a CLI override alone cannot relocate the widget's container.
+Storage defaults to `~/Library/Application Support/Cats`. Home Manager passes `settings.data-dir` to both processes; use an absolute path there. Direct desktop launches resolve the same TOML configuration through `cats config`; `CATS_DATA_DIR` overrides it for both processes.
 
 ## Themes
 
-`cats themes` prints the built-in theme catalog as resolved JSON. Preview the production views with `just preview`: [Nord](preview-nord.png), [Rosé Pine](preview-rose-pine.png), [Moon](preview-rose-pine-moon.png), [Dawn](preview-rose-pine-dawn.png).
+`cats themes` prints the built-in theme catalog as resolved JSON. `just preview` renders the production cards in each built-in theme into `build/previews/`; no preview code is shipped in the app.
 
 Built-ins: `cats` (adaptive glass), `nord`, `rose-pine`, `rose-pine-moon`, and `rose-pine-dawn` (light). Colors come from the official [Nord palette](https://www.nordtheme.com/docs/colors-and-palettes/) and [Rosé Pine palette](https://github.com/rose-pine/palette/blob/main/palette.json).
 
@@ -34,7 +34,7 @@ inherits = "nord"
 accent = "#88c0d0"
 ```
 
-Then set `theme = "my-nord"`. Built-in names are reserved. Inheritance merges semantic colors: `surface`, `text`, `muted`, `accent`, `secondary`, `claude`, `codex`, `warning`, and `error`. Values must be `#RRGGBB`. `appearance` accepts `system`, `dark`, or `light`; omitted values inherit. Glass geometry, blur, accessibility behavior, and layout stay consistent across themes. Rust resolves themes into the shared snapshot; SwiftUI only renders them, including inside the sandboxed widget. This is inspired by Helix, not a parser for Helix syntax-highlighting themes.
+Then set `theme = "my-nord"`. Built-in names are reserved. Inheritance merges semantic colors: `surface`, `text`, `muted`, `accent`, `secondary`, `claude`, `codex`, `warning`, and `error`. Values must be `#RRGGBB`. `appearance` accepts `system`, `dark`, or `light`; omitted values inherit. Glass geometry, blur, accessibility behavior, and layout stay consistent across themes. Rust resolves themes into the shared snapshot; SwiftUI only renders them, including the desktop panels. This is inspired by Helix, not a parser for Helix syntax-highlighting themes.
 
 ## Flake and Home Manager
 
@@ -48,7 +48,7 @@ inputs.cats.inputs.home-manager.follows = "home-manager";
 imports = [ inputs.cats.homeManagerModules.default ];
 programs.cats = {
   enable = true;
-  service.enable = true;
+  desktop = { enable = true; position = "top-right"; margin = 24; };
   settings = {
     budget-usd = 30;
     theme = "my-nord";
@@ -60,10 +60,16 @@ programs.cats = {
 };
 ```
 
-`themes` also accepts TOML strings and Nix paths. For files-only configuration, set `package = null`, `appPackage = null`, and `service.enable = false`. The module uses a pinned signed bundle when available, with its embedded collector. Until the first signed release is published and pinned, it warns and installs only the collector unless `appPackage` is supplied. See [widget distribution](releasing.md) for the complete setup and current limitations. Supported systems are Apple Silicon and Intel macOS.
+`themes` also accepts TOML strings and Nix paths. Set `desktop.enable = false` for headless collection, or disable both `desktop.enable` and `service.enable` to install without starting anything.
 
-Use `nix build`, `nix run . -- config`, `nix develop`, and `nix flake check`. The exported `overlays.default` adds `pkgs.cats`; using the Home Manager module does not require the overlay. `just build` remains the native Xcode build path. Signing and WidgetKit registration are separate from Nix packaging.
+The module builds the Rust collector and Swift/AppKit UI directly from source. No Apple account, certificate, prebuilt bundle, App Group or widget registration is needed. Nix's compiler/linker tooling handles the minimal ARM64 ad-hoc signatures.
 
-To include an existing Xcode-built bundle in Home Manager, use `programs.cats.appPackage = inputs.cats.lib.mkApp { inherit pkgs; src = /absolute/path/to/Cats.app; };`. This imports the bundle without binary fixups; it does not build or sign it. Use a signed release bundle for desktop widget registration. With a nonstandard `xdg.configHome`, enable the service (it passes the explicit config path); Finder-launched apps do not inherit your shell's XDG variables.
+The default Nixpkgs input supports Apple Silicon. Intel users must supply Nixpkgs 26.05 Darwin (and a matching Home Manager version): Nixpkgs 26.11 removed `x86_64-darwin`. Cats exposes Intel package outputs only when the supplied Nixpkgs still supports them. Native Intel builds remain covered by the source-build CI; Intel Nix builds need separate verification.
 
-The launchd service is optional and does not require keeping Cats.app open. Both collectors use the same single-instance lock, so a service and an embedded helper cannot write concurrently. Quit the app before first enabling the service to avoid restart retries until its embedded collector exits. Configuration contains no API keys; Nix-generated files are public in the store. No Home Manager activation is performed by this repository's checks.
+Use `nix build`, `nix build .#cats-desktop`, `nix run . -- config`, `nix develop`, and `nix flake check`. The overlay exports `pkgs.cats` and `pkgs.cats-desktop`; the module does not need it.
+
+Pass `inputs` through Home Manager's `extraSpecialArgs`, then import your common Cats module from your host's Home Manager modules. Both services run as your user; neither restarts on failure. They never request Accessibility, Screen Recording or Full Disk Access. Protected source paths may still be denied by macOS: change the configured source rather than granting broad access.
+
+Migration: remove the old `appPackage`, `app.autostart`, `lib.mkApp` and local app flake input. No automatic migration reads the old Group Container. Re-importing the original telemetry logs reconstructs the cache. If you previously disabled Cats using `launchctl disable`, it remains disabled until explicitly re-enabled.
+
+Configuration contains no API keys; Nix-generated files are public in the store. Checks never activate Home Manager.

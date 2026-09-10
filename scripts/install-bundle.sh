@@ -6,9 +6,8 @@ if [[ "$cats_destination" != /*/Cats.app ]]; then
   echo 'Destination must be an absolute Cats.app path' >&2
   exit 1
 fi
-/usr/bin/codesign --verify --deep --strict "$cats_source"
+test -x "$cats_source/Contents/MacOS/Cats"
 test "$(/usr/bin/plutil -extract CFBundleIdentifier raw "$cats_source/Contents/Info.plist")" = dev.cats.app
-test -x "$cats_source/Contents/PlugIns/CatsWidget.appex/Contents/MacOS/CatsWidget"
 cats_parent="$(dirname "$cats_destination")"
 mkdir -p "$cats_parent"
 cats_receipt="$cats_parent/.cats-installed-source"
@@ -19,7 +18,6 @@ if [[ -e "$cats_destination" || -L "$cats_destination" ]]; then
   fi
   test "$(/usr/bin/plutil -extract CFBundleIdentifier raw "$cats_destination/Contents/Info.plist")" = dev.cats.app
   if [[ "$(<"$cats_receipt")" == "$cats_source" ]] && diff -qr "$cats_source" "$cats_destination" > /dev/null; then
-    /usr/bin/codesign --verify --deep --strict "$cats_destination"
     /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$cats_destination"
     exit 0
   fi
@@ -28,7 +26,6 @@ cats_stage="$(mktemp -d "$cats_parent/.cats-install.XXXXXX")"
 /usr/bin/ditto "$cats_source" "$cats_stage/Cats.app"
 # Nix store bundles are read-only; the owned copy needs writable directories to move.
 chmod -R u+w "$cats_stage/Cats.app"
-/usr/bin/codesign --verify --deep --strict "$cats_stage/Cats.app"
 if [[ -e "$cats_destination" || -L "$cats_destination" ]]; then
   mv "$cats_destination" "$cats_stage/previous-bundle"
   echo "Previous Cats bundle preserved at $cats_stage/previous-bundle"

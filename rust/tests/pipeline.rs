@@ -11,7 +11,16 @@ use serde_json::json;
 use std::{fs, io::Write, path::Path};
 
 #[test]
-fn signed_app_group_configures_the_standalone_collector() {
+fn aggregation_rejects_invalid_budgets() {
+    let directory = tempfile::tempdir().unwrap();
+    let store = Store::open(&directory.path().join("test.sqlite")).unwrap();
+    for budget in [0., -1., f64::NAN, f64::INFINITY] {
+        assert!(aggregate_between(&store, 1000, 0, 86400, budget).is_err());
+    }
+}
+
+#[test]
+fn legacy_app_group_never_selects_protected_storage() {
     let dir = tempfile::tempdir().unwrap();
     let file = dir.path().join("config.toml");
     fs::write(&file, "").unwrap();
@@ -31,13 +40,41 @@ fn signed_app_group_configures_the_standalone_collector() {
     assert_eq!(
         config["data_dir"],
         dir.path()
-            .join("Library/Group Containers/ABCDE12345.dev.cats.shared")
+            .join("Library/Application Support/Cats")
             .to_str()
             .unwrap()
     );
     assert!(!dir.path().join("Library").exists());
-    assert!(!invoke("../escape").status.success());
-    assert!(!invoke("..").status.success());
+    for group in ["", "group.dev.cats.shared", "../escape", ".."] {
+        let output = invoke(group);
+        assert!(output.status.success());
+        let config: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+        assert_eq!(
+            config["data_dir"],
+            dir.path()
+                .join("Library/Application Support/Cats")
+                .to_str()
+                .unwrap()
+        );
+    }
+}
+
+#[test]
+fn scanning_does_not_swallow_permission_denials() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o0)).unwrap();
+    let result = collectors::files(dir.path());
+    fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o700)).unwrap();
+    assert_eq!(
+        result.unwrap_err().kind(),
+        std::io::ErrorKind::PermissionDenied
+    );
+    assert!(
+        collectors::files(&dir.path().join("missing"))
+            .unwrap()
+            .is_empty()
+    );
 }
 
 #[test]
@@ -190,16 +227,17 @@ fn sqlite_migration_is_repeatable_and_usage_upserts() {
     let path = dir.path().join("db");
     let s = Store::open(&path).unwrap();
     let mut e = event("a", 100, 1.);
-    assert_eq!(Store::insert(&s.db, &e).unwrap(), 1);
-    assert_eq!(Store::insert(&s.db, &e).unwrap(), 0);
+    assert_eq!(Store::insert(s.connection(), &e).unwrap(), 1);
+    assert_eq!(Store::insert(s.connection(), &e).unwrap(), 0);
     e.tokens.output = 100;
     e.cost = Some(2.);
-    assert_eq!(Store::insert(&s.db, &e).unwrap(), 1);
+    assert_eq!(Store::insert(s.connection(), &e).unwrap(), 1);
     drop(s);
     let s = Store::open(&path).unwrap();
-    let total: f64 =
-        s.db.query_row("SELECT SUM(cost) FROM events", [], |r| r.get(0))
-            .unwrap();
+    let total: f64 = s
+        .connection()
+        .query_row("SELECT SUM(cost) FROM events", [], |r| r.get(0))
+        .unwrap();
     assert_eq!(total, 2.);
 }
 #[test]
@@ -238,7 +276,8 @@ fn incremental_ingestion_survives_restart_rotation_and_partial_lines() {
         0
     );
     assert_eq!(
-        s.db.query_row("SELECT COUNT(*) FROM events", [], |r| r.get::<_, i64>(0))
+        s.connection()
+            .query_row("SELECT COUNT(*) FROM events", [], |r| r.get::<_, i64>(0))
             .unwrap(),
         3
     );
@@ -268,7 +307,7 @@ fn daily_totals_rolling_burn_and_projection_have_separate_windows() {
         ("b", 8500, 2.),
         ("future", 9500, 99.),
     ] {
-        Store::insert(&s.db, &event(id, ts, cost)).unwrap();
+        Store::insert(s.connection(), &event(id, ts, cost)).unwrap();
     }
     let result = aggregate_between(&s, 9000, 7200, 93600, 20.).unwrap();
     assert_eq!(result.today.spend_usd, 3.);
@@ -280,13 +319,13 @@ fn daily_totals_rolling_burn_and_projection_have_separate_windows() {
 #[test]
 fn projection_requires_history_and_known_prices() {
     let s = store();
-    Store::insert(&s.db, &event("a", 8900, 19.)).unwrap();
+    Store::insert(s.connection(), &event("a", 8900, 19.)).unwrap();
     let result = aggregate_between(&s, 9000, 0, 86400, 20.).unwrap();
     assert!(result.today.projected_daily_spend.is_none());
     assert_eq!(result.today.budget_state, "warning");
     let mut e = event("b", 8000, 2.);
     e.cost = None;
-    Store::insert(&s.db, &e).unwrap();
+    Store::insert(s.connection(), &e).unwrap();
     assert_eq!(
         aggregate_between(&s, 9000, 0, 86400, 20.)
             .unwrap()
@@ -306,7 +345,7 @@ fn idle_agents_wait_instead_of_falsely_completing() {
         updated: 8100,
         ..Cursor::default()
     };
-    Store::save_cursor(&s.db, "test", "Claude", &c).unwrap();
+    Store::save_cursor(s.connection(), "test", "Claude", &c).unwrap();
     assert_eq!(
         aggregate_between(&s, 8200, 0, 86400, 20.)
             .unwrap()
@@ -337,11 +376,12 @@ fn storage_never_retains_conversation_content() {
     let (c, events) = parse_fixture(include_str!("fixtures/claude.jsonl"), "Claude");
     let s = store();
     for e in events {
-        Store::insert(&s.db, &e).unwrap();
+        Store::insert(s.connection(), &e).unwrap();
     }
-    Store::save_cursor(&s.db, "source", "Claude", &c).unwrap();
-    let names: String =
-        s.db.query_row(
+    Store::save_cursor(s.connection(), "source", "Claude", &c).unwrap();
+    let names: String = s
+        .connection()
+        .query_row(
             "SELECT GROUP_CONCAT(name) FROM pragma_table_info('events')",
             [],
             |r| r.get(0),

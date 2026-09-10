@@ -10,7 +10,7 @@ pub struct Cli {
     /// Emit CPU, memory, ingestion, and latency measurements.
     #[arg(long)]
     pub profile: bool,
-    /// Override the shared App Group storage directory.
+    /// Override the local telemetry storage directory.
     #[arg(long, env = "CATS_DATA_DIR", global = true)]
     pub data_dir: Option<PathBuf>,
     /// Daily budget in USD.

@@ -3,8 +3,10 @@ import SwiftUI
 
 struct DashboardView: View {
     @ObservedObject var model: AppState
-    private var palette: CatsPalette { CatsPalette(colors: model.reading.state.theme?.colors ?? [:]) }
-    private var state: WidgetState { model.reading.state }
+    private var palette: CatsPalette {
+        CatsPalette(colors: model.reading.state.theme?.colors ?? [:])
+    }
+    private var state: TelemetryState { model.reading.state }
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
             HStack(alignment: .center) {
@@ -18,7 +20,7 @@ struct DashboardView: View {
             }.padding(.top, 8)
             HStack(spacing: 18) {
                 GlassCard { BudgetPanel(today: state.today).frame(height: 184) }
-                GlassCard { MediumWidgetView(reading: model.reading).frame(height: 184) }
+                GlassCard { ProviderCardContent(reading: model.reading).frame(height: 184) }
             }
             GlassCard {
                 VStack(alignment: .leading, spacing: 18) {
@@ -30,27 +32,44 @@ struct DashboardView: View {
                     Hairline()
                     if state.agents.isEmpty {
                         VStack(spacing: 8) {
-                            Text("Your next session starts here.").font(.system(size: 14, weight: .medium))
-                            Text("Start Claude, Codex, or a local agent.").font(.system(size: 12)).foregroundStyle(palette.muted)
+                            Text("Your next session starts here.").font(
+                                .system(size: 14, weight: .medium))
+                            Text("Start Claude, Codex, or a local agent.").font(.system(size: 12))
+                                .foregroundStyle(palette.muted)
                         }.frame(maxWidth: .infinity, minHeight: 130)
                     } else {
                         ScrollView {
-                            LazyVStack(spacing: 19) { ForEach(state.agents) { AgentRow(agent: $0) } }
+                            LazyVStack(spacing: 19) {
+                                ForEach(state.agents) { AgentRow(agent: $0) }
+                            }
                         }.frame(height: 130)
                     }
                     Hairline()
                     HStack {
-                        Text("Managed agents").font(.system(size: 11)).foregroundStyle(palette.muted)
-                            .help("Pause and resume apply to commands launched with cats run.")
+                        Text("Managed agents").font(.system(size: 11)).foregroundStyle(
+                            palette.muted
+                        )
+                        .help("Pause and resume apply to commands launched with cats run.")
                         Spacer()
-                        GlassAction(action: { model.command("pause") }) { Label("Pause all", systemImage: "pause.fill") }
-                        GlassAction(action: { model.command("resume") }) { Label("Resume", systemImage: "play.fill") }
+                        GlassAction {
+                            model.send(.pause)
+                        } label: {
+                            Label("Pause all", systemImage: "pause.fill")
+                        }
+                        GlassAction {
+                            model.send(.resume)
+                        } label: {
+                            Label("Resume", systemImage: "play.fill")
+                        }
                     }
                 }
             }
             HStack {
                 StatusFooter(reading: model.reading)
-                if model.reading.unavailable { Button("Start collector") { model.startCollector() }.font(.caption).buttonStyle(.plain) }
+                if model.reading.unavailable {
+                    Button("Start collector") { model.startCollector() }.font(.caption).buttonStyle(
+                        .plain)
+                }
             }.padding(.horizontal, 3)
             if let error = model.error { Text(error).font(.caption).foregroundStyle(palette.error) }
         }.padding(26).frame(width: 820)

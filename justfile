@@ -13,29 +13,27 @@ config *args:
 
 # Enter a development shell with the optional tools.
 dev:
-    nix-shell -p just xcodegen rustfmt clippy
+    nix-shell -p just rustfmt clippy
 
-# Format Rust sources.
+# Format Rust and Swift sources using the project settings.
 fmt:
     cargo fmt --all
+    bash scripts/format-swift.sh format
 
 # Verify Rust accounting and Swift snapshot handling.
 test:
     cargo test --all-targets
     env -u SDKROOT -u DEVELOPER_DIR /usr/bin/swift test --package-path macos
 
-# Check formatting and common Rust mistakes.
+# Check both languages' formatting and common Rust mistakes.
 check:
     cargo fmt --all -- --check
     cargo clippy --all-targets -- -D warnings
+    bash scripts/format-swift.sh check
 
-# Build the native app, widget extension, and embedded collector.
+# Build desktop panels and the embedded collector. No Apple account needed.
 build:
     bash scripts/build.sh
-
-# Build, sign, and notarize using your local Developer ID and keychain profile.
-release:
-    bash scripts/release.sh
 
 # Run the collector (pass --once or --profile as needed).
 run *args:
@@ -57,13 +55,17 @@ profile:
 preview:
     mkdir -p build
     cargo run --quiet -- themes > build/themes.json
-    env -u SDKROOT -u DEVELOPER_DIR /usr/bin/swiftc -parse-as-library macos/Shared/WidgetState.swift macos/Shared/StateReader.swift macos/Shared/GlassStyle.swift macos/Shared/TelemetryViews.swift macos/Shared/WidgetViews.swift macos/Shared/DesignGallery.swift scripts/render.swift -o build/render-preview
+    env -u SDKROOT -u DEVELOPER_DIR /usr/bin/swiftc -parse-as-library macos/Shared/*.swift macos/Views/{DesktopCard,GlassStyle,TelemetryComponents,TelemetryCards}.swift macos/Preview/*.swift scripts/render.swift -o build/render-preview
     build/render-preview
 
 # Exercise live ingestion and managed process controls in temporary storage.
 smoke:
     cargo build --release
     ruby scripts/smoke.rb
+
+# Briefly open two isolated cards, verify their windows, then stop the test UI.
+desktop-smoke:
+    bash scripts/desktop-smoke.sh
 
 # Includes two 60-second reload cycles in isolated temporary storage.
 theme-smoke:

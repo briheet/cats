@@ -2,12 +2,19 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 cargo build --release
-if command -v xcodegen >/dev/null; then
-  xcodegen generate --spec macos/project.yml
-else
-  nix-shell -p xcodegen --run 'xcodegen generate --spec macos/project.yml'
+# swiftc supplies the required ARM64 ad-hoc signature; no account or certificate.
+cats_bundle=build/Build/Products/Release/Cats.app
+if [[ -d "$cats_bundle" ]]; then
+  cats_backup="$(mktemp -d build/previous-app.XXXXXX)"
+  mv "$cats_bundle" "$cats_backup/Cats.app"
 fi
+mkdir -p "$cats_bundle/Contents/MacOS" "$cats_bundle/Contents/Helpers"
 cats_arch="$(uname -m)"
-env -u SDKROOT -u DEVELOPER_DIR -u CC -u CXX -u LD -u AR -u AS /usr/bin/xcodebuild -quiet -project macos/Cats.xcodeproj -scheme Cats -configuration Release -destination "platform=macOS,arch=$cats_arch" -derivedDataPath build CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=YES "CATS_APP_GROUP=${CATS_APP_GROUP:-group.dev.cats.shared}" "MARKETING_VERSION=${CATS_VERSION:-0.1.0}" "CURRENT_PROJECT_VERSION=${CATS_BUILD_NUMBER:-1}" build
-bash scripts/sign.sh build/Build/Products/Release/Cats.app
-printf '\nBuilt: %s/build/Build/Products/Release/Cats.app\n' "$PWD"
+env -u SDKROOT -u DEVELOPER_DIR /usr/bin/swiftc -O -parse-as-library \
+  -target "$cats_arch-apple-macos14.0" \
+  macos/CatsApp/*.swift \
+  macos/Shared/*.swift macos/Views/*.swift \
+  -o "$cats_bundle/Contents/MacOS/Cats"
+cp macos/CatsApp/Info.plist "$cats_bundle/Contents/Info.plist"
+cp target/release/cats "$cats_bundle/Contents/Helpers/cats"
+printf '\nBuilt: %s/%s\n' "$PWD" "$cats_bundle"

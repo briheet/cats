@@ -1,6 +1,6 @@
 import Foundation
 
-struct WidgetState: Codable, Equatable {
+struct TelemetryState: Codable, Equatable {
     var theme: ThemeState?
     var schemaVersion = 1
     var generatedAt: Double = 0
@@ -29,15 +29,16 @@ struct WidgetState: Codable, Equatable {
         var unpricedEvents = 0
     }
     struct History: Codable, Equatable { var hourlySpend: [Double] = [] }
-    static let empty = WidgetState()
-    static func decode(_ data: Data) throws -> WidgetState {
+    static let empty = TelemetryState()
+    static func decode(_ data: Data) throws -> TelemetryState {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         let state = try decoder.decode(Self.self, from: data)
         guard state.schemaVersion == 1, state.generatedAt.isFinite,
-              state.today.spendUsd.isFinite, state.today.spendUsd >= 0,
-              state.today.budgetUsd.isFinite, state.today.budgetUsd > 0,
-              state.today.budgetFraction.isFinite else { throw CocoaError(.coderReadCorrupt) }
+            state.today.spendUsd.isFinite, state.today.spendUsd >= 0,
+            state.today.budgetUsd.isFinite, state.today.budgetUsd > 0,
+            state.today.budgetFraction.isFinite
+        else { throw CocoaError(.coderReadCorrupt) }
         return state
     }
 }
@@ -61,23 +62,4 @@ struct Agent: Codable, Identifiable, Equatable {
     var elapsedSeconds: Double
     var tokens: Double
     var spendUsd: Double
-}
-enum Display {
-    static func money(_ value: Double) -> String {
-        guard value.isFinite, value >= 0 else { return "—" }
-        return value.formatted(.currency(code: "USD").locale(Locale(identifier: "en_US")))
-    }
-    static func tokens(_ value: Double) -> String {
-        guard value.isFinite, value >= 0 else { return "—" }
-        for (scale, suffix) in [(1e9,"B"),(1e6,"M"),(1e3,"K")] {
-            if value >= scale { return (value / scale).formatted(.number.precision(.fractionLength(0...1))) + suffix }
-        }
-        return value.formatted(.number.precision(.fractionLength(0)))
-    }
-    static func runtime(_ seconds: Double) -> String {
-        guard seconds.isFinite, seconds >= 0 else { return "—" }
-        if seconds < 60 { return "<1m" }
-        if seconds < 3600 { return "\(Int(seconds / 60))m" }
-        return "\(Int(min(seconds / 3600, 99999)))h \(Int(seconds.truncatingRemainder(dividingBy: 3600) / 60))m"
-    }
 }
