@@ -19,7 +19,13 @@ fn main() -> Result<()> {
         )
         .with_writer(std::io::stderr)
         .init();
-    let args = Cli::parse();
+    let mut args = Cli::parse();
+    if let Some(Command::Reset { yes }) = args.command {
+        if !yes {
+            return Err("Reset deletes stored usage without a backup. Pass reset --yes to confirm; stop the collector first.".into());
+        }
+        args.once = true;
+    }
     if matches!(args.command, Some(Command::Themes)) {
         let themes = theme::BUILTINS
             .iter()

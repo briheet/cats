@@ -29,6 +29,12 @@ pub enum Command {
     Themes,
     /// Validate configuration and print the resolved settings without starting Cats.
     Config,
+    /// Delete the database without a backup, reimport available logs, and exit.
+    Reset {
+        /// Confirm permanent deletion of stored usage and ingestion cursors.
+        #[arg(long)]
+        yes: bool,
+    },
     /// Launch an agent that Cats can pause and resume.
     Run {
         name: String,

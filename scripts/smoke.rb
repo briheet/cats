@@ -44,6 +44,11 @@ Dir.mktmpdir('cats-smoke-') do |dir|
     _, second_status = Process.wait2(second)
     raise 'Duplicate collector acquired the lock' if second_status.success?
     report['single_instance'] = true
+    reset = Process.spawn(env, binary, 'reset', '--yes', out: File::NULL, err: File::NULL)
+    _, reset_status = Process.wait2(reset)
+    raise 'Reset ran while collector held the lock' if reset_status.success?
+    raise 'Reset changed live snapshot' unless read_state.call.dig('today', 'tokens_total') == 3850
+    report['reset_rejects_live_collector'] = true
 
     runner = Process.spawn(env, binary, 'run', 'smoke-agent', '--', '/bin/sleep', '120', out: log, err: log)
     status = ->(name) { read_state.call&.fetch('agents', [])&.any? { |a| a['name'] == 'smoke-agent' && a['status'] == name } }
@@ -83,6 +88,14 @@ Dir.mktmpdir('cats-smoke-') do |dir|
     log.rewind
     report['profile'] = log.read.lines.select { |line| line.include?('profile') || line.include?('latency') }.map { |line| line.gsub(/\e\[[0-9;]*m/, '').strip }
     report['graceful_shutdown'] = true
+    unless ENV['CATS_SMOKE_CONFIG'] == '1'
+      reset = Process.spawn(env, binary, 'reset', '--yes', out: log, err: log)
+      _, reset_status = Process.wait2(reset)
+      raise 'Reset failed' unless reset_status.success?
+      raise 'Reset lost available usage' unless read_state.call.dig('today', 'tokens_total') == 3850
+      raise 'Reset removed agent sources' if Dir.glob(File.join(data, 'agents', '*.jsonl')).empty?
+      report['reset_reimports_usage'] = true
+    end
   ensure
     if $!
       warn "Smoke state: #{read_state.call.inspect}" if read_state

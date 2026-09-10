@@ -1,7 +1,12 @@
 //! Bounded ingestion, filesystem notifications and snapshot publication.
 use crate::shutdown;
 use cats::{
-    Result, aggregation, cli::Cli, collectors, config::Config, profiling::Metrics, snapshot,
+    Result, aggregation,
+    cli::{Cli, Command},
+    collectors,
+    config::Config,
+    profiling::Metrics,
+    snapshot,
     storage::Store,
 };
 use notify::{RecursiveMode, Watcher};
@@ -31,7 +36,44 @@ pub fn run(args: &Cli, mut config: Config) -> Result<()> {
         .open(config.data_dir.join("collector.lock"))?;
     // SAFETY: lock owns a valid descriptor and stays alive for the entire service.
     if unsafe { libc::flock(lock.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
-        return Err("A collector is already running in this data directory".into());
+        return Err(
+            "A collector is already running in this data directory; stop it before retrying".into(),
+        );
+    }
+    let resetting = matches!(args.command, Some(Command::Reset { yes: true }));
+    if resetting {
+        // Keep the collector lock across deletion, schema creation, and reimport.
+        let files = [
+            "cats.sqlite",
+            "cats.sqlite-wal",
+            "cats.sqlite-shm",
+            "cats.sqlite-journal",
+            "cats-state.json",
+            "heartbeat",
+        ];
+        for name in files {
+            match std::fs::symlink_metadata(config.data_dir.join(name)) {
+                Ok(metadata) if !metadata.file_type().is_file() => {
+                    return Err(format!("Refusing to reset non-regular file: {name}").into());
+                }
+                Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
+                    return Err(error.into());
+                }
+                _ => {}
+            }
+        }
+        eprintln!(
+            "Resetting {} without a backup",
+            config.data_dir.join("cats.sqlite").display()
+        );
+        for name in files {
+            match std::fs::remove_file(config.data_dir.join(name)) {
+                Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
+                    return Err(error.into());
+                }
+                _ => {}
+            }
+        }
     }
     let mut store = Store::open(&config.data_dir.join("cats.sqlite"))?;
     let mut metrics = Metrics::new(args.profile);
@@ -139,6 +181,15 @@ pub fn run(args: &Cli, mut config: Config) -> Result<()> {
         pending = continuation;
         if args.once {
             if pending.is_empty() {
+                if resetting {
+                    if !retry.is_empty() {
+                        return Err("Database reset, but some logs could not be imported; inspect collector errors and retry collection".into());
+                    }
+                    println!(
+                        "Database recreated using Cats {}. Available logs imported; no backup was made. Restart your collector service to resume live updates.",
+                        env!("CARGO_PKG_VERSION")
+                    );
+                }
                 break;
             } else {
                 continue;

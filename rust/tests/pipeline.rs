@@ -13,6 +13,80 @@ use serde_json::json;
 use std::{fs, io::Write, path::Path};
 
 #[test]
+fn reset_requires_confirmation_and_recreates_only_generated_storage() {
+    let dir = tempfile::tempdir().unwrap();
+    let data = dir.path().join("data");
+    let source = dir.path().join("sources");
+    fs::create_dir_all(&data).unwrap();
+    fs::create_dir_all(&source).unwrap();
+    let config = dir.path().join("config.toml");
+    fs::write(
+        &config,
+        format!("claude-dir = {0:?}\ncodex-dir = {0:?}\n", source),
+    )
+    .unwrap();
+    let database = data.join("cats.sqlite");
+    fs::write(&database, "obsolete database").unwrap();
+    fs::write(data.join("keep.txt"), "untouched").unwrap();
+    let run = |yes| {
+        let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_cats"));
+        command
+            .args(["--config"])
+            .arg(&config)
+            .arg("--data-dir")
+            .arg(&data)
+            .args(["--budget", "20", "reset"]);
+        if yes {
+            command.arg("--yes");
+        }
+        command.output().unwrap()
+    };
+    assert!(!run(false).status.success());
+    assert_eq!(fs::read_to_string(&database).unwrap(), "obsolete database");
+    let outside = dir.path().join("outside");
+    fs::write(&outside, "untouched").unwrap();
+    std::os::unix::fs::symlink(&outside, data.join("cats.sqlite-wal")).unwrap();
+    assert!(!run(true).status.success());
+    assert_eq!(fs::read_to_string(&database).unwrap(), "obsolete database");
+    assert_eq!(fs::read_to_string(&outside).unwrap(), "untouched");
+    fs::remove_file(data.join("cats.sqlite-wal")).unwrap();
+    for name in [
+        "cats.sqlite-wal",
+        "cats.sqlite-shm",
+        "cats.sqlite-journal",
+        "cats-state.json",
+        "heartbeat",
+    ] {
+        fs::write(data.join(name), "obsolete").unwrap();
+    }
+    let result = run(true);
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert_eq!(
+        fs::read_to_string(data.join("keep.txt")).unwrap(),
+        "untouched"
+    );
+    assert!(config.exists());
+    let db = rusqlite::Connection::open(&database).unwrap();
+    assert_eq!(
+        db.query_row("PRAGMA integrity_check", [], |r| r.get::<_, String>(0))
+            .unwrap(),
+        "ok"
+    );
+    assert_eq!(
+        db.query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0))
+            .unwrap(),
+        1
+    );
+    assert!(data.join("cats-state.json").exists());
+    drop(db);
+    assert!(run(true).status.success());
+}
+
+#[test]
 fn domain_values_preserve_json_and_sql_text() {
     let db = rusqlite::Connection::open_in_memory().unwrap();
     for (status, text) in [

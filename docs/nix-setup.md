@@ -122,6 +122,30 @@ See [settings and themes](configuration.md) for customization.
 
 ## Troubleshooting
 
+### Recreate the database
+
+After installing the desired Cats version, `cats reset --yes` deletes the database,
+SQLite sidecars, old UI snapshot, and heartbeat without a backup, creates the
+installed version's schema, reimports available logs, and exits. It preserves
+configuration, themes, managed-agent logs, and control settings. Usage whose source
+logs are gone is permanently lost. This is a destructive reset, not a migration
+or software update, and it refuses to run alongside a collector.
+
+For the Home Manager service (no sudo):
+
+```sh
+launchctl bootout gui/$(id -u)/org.nix-community.home.cats
+# Wait for the collector to exit; reset safely refuses if it still holds its lock.
+cats reset --yes
+launchctl bootstrap gui/$(id -u) "$HOME/Library/LaunchAgents/org.nix-community.home.cats.plist"
+```
+
+For a manually launched collector, stop it before resetting and restart it afterward.
+If import fails, the old database is already gone; resolve the reported source
+error and restart collection. There is no automatic reset on version changes.
+
+### Service and data issues
+
 - **No cards:** show the desktop; panels are behind normal windows. Check enabled
   sizes, then use **Show widgets** in the menu.
 - **Stale counts:** allow five seconds after ingestion. Counts reflect log activity, not open windows.
