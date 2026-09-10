@@ -101,8 +101,13 @@ final class StateTests: XCTestCase {
         XCTAssertEqual(Display.money(142.8), "$142.80")
         XCTAssertEqual(Display.money(.infinity), "—")
         XCTAssertEqual(Display.tokens(.nan), "—")
-        XCTAssertEqual(Display.runtime(.infinity), "—")
-        XCTAssertEqual(Display.runtime(720), "12m")
+        XCTAssertEqual(Display.activityAge(nil, now: 44000), "—")
+        XCTAssertEqual(Display.activityAge(.infinity, now: 44000), "—")
+        XCTAssertEqual(Display.activityAge(44001, now: 44000), "—")
+        XCTAssertEqual(Display.activityAge(43990, now: 44000), "now")
+        XCTAssertEqual(Display.activityAge(43520, now: 44000), "8m ago")
+        XCTAssertEqual(Display.activityAge(8482, now: 44000), "9h ago")
+        XCTAssertEqual(Display.activityAge(1, now: 172801), "2d ago")
     }
 
     func testMissingStaleAndCorruptedSnapshotRetainsLastGoodState() throws {

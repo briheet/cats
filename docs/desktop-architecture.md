@@ -48,6 +48,12 @@ code, and raw provider records do not.
 - Malformed JSON is skipped. Transient file errors back off; denied access stops collection.
 - Unchanged snapshots are not rewritten.
 - The UI reads at startup and every five seconds, publishing only changed readings.
+- Agent rows show time since last logged activity (`9h ago`), not turn duration.
+  Missing timestamps display a dash. Legacy elapsed durations remain in the JSON
+  protocol for compatibility; unknown start times never imply an epoch-long runtime.
+- Provider running/waiting records older than 30 minutes become idle in snapshots.
+  Codex turn completion becomes idle after five minutes. Historical database rows
+  are retained as source observations, not rewritten to claim current activity.
 - A heartbeat older than 180 seconds marks collection unavailable at the next UI refresh.
 - Invalid snapshots retain the last good data and show a warning.
 - LaunchAgents do not automatically restart on failure.

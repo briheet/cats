@@ -53,6 +53,12 @@ impl AgentStatus {
     }
 
     pub fn at(self, provider: ProviderKind, age_seconds: i64) -> Self {
+        if provider != ProviderKind::Local
+            && age_seconds > 1800
+            && matches!(self, Self::Running | Self::Waiting)
+        {
+            return Self::Idle;
+        }
         match (provider, self, age_seconds > 300) {
             // Legacy Codex completion records describe turns, not closed sessions.
             (ProviderKind::Codex, Self::Completed | Self::Waiting, false) => Self::Waiting,

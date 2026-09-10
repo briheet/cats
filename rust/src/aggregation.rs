@@ -33,6 +33,8 @@ pub struct Agent {
     pub provider: ProviderKind,
     pub status: AgentStatus,
     pub elapsed_seconds: i64,
+    #[serde(default)]
+    pub last_activity_at: Option<i64>,
     pub tokens: u64,
     pub spend_usd: f64,
 }
@@ -229,10 +231,10 @@ fn read_agents(db: &rusqlite::Connection, now: i64, midnight: i64) -> Result<Vec
                 COALESCE(SUM(e.input+e.output+e.cache_read+e.cache_write+e.cache_write_1h),0),
                 COALESCE(SUM(e.cost),0)
          FROM agents a LEFT JOIN events e ON e.agent=a.session AND e.provider=a.provider
-         WHERE a.updated>=?1 GROUP BY a.id ORDER BY a.updated DESC LIMIT 200",
+         WHERE a.updated>=?1 AND a.updated<=?2 GROUP BY a.id ORDER BY a.updated DESC LIMIT 200",
     )?;
     let mut agents: Vec<Agent> = query
-        .query_map([midnight.min(now - 86400)], |row| {
+        .query_map([midnight.min(now - 86400), now], |row| {
             let stored_status: AgentStatus = row.get(3)?;
             let started: i64 = row.get(4)?;
             let updated: i64 = row.get(5)?;
@@ -248,7 +250,13 @@ fn read_agents(db: &rusqlite::Connection, now: i64, midnight: i64) -> Result<Vec
                 name: row.get(1)?,
                 provider,
                 status,
-                elapsed_seconds: (end - started).max(0),
+                // Missing starts in older logs are unknown, not Unix-epoch runtimes.
+                elapsed_seconds: if started > 0 && started <= updated {
+                    (end - started).max(0)
+                } else {
+                    0
+                },
+                last_activity_at: Some(updated),
                 tokens: row.get::<_, i64>(6)? as u64,
                 spend_usd: row.get(7)?,
             })

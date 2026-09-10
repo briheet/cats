@@ -1,6 +1,19 @@
 import Foundation
 
 enum Display {
+    static func activityAge(_ timestamp: Double?, now: Double = Date().timeIntervalSince1970)
+        -> String
+    {
+        guard let timestamp, timestamp.isFinite, timestamp > 0, now.isFinite, timestamp <= now
+        else {
+            return "—"
+        }
+        let age = now - timestamp
+        if age < 60 { return "now" }
+        if age < 3600 { return "\(Int(age / 60))m ago" }
+        if age < 86400 { return "\(Int(age / 3600))h ago" }
+        return "\(Int(min(age / 86400, 99999)))d ago"
+    }
     static func money(_ value: Double) -> String {
         guard value.isFinite, value >= 0 else { return "—" }
         return value.formatted(.currency(code: "USD").locale(Locale(identifier: "en_US")))
@@ -13,12 +26,5 @@ enum Display {
             }
         }
         return value.formatted(.number.precision(.fractionLength(0)))
-    }
-    static func runtime(_ seconds: Double) -> String {
-        guard seconds.isFinite, seconds >= 0 else { return "—" }
-        if seconds < 60 { return "<1m" }
-        if seconds < 3600 { return "\(Int(seconds / 60))m" }
-        return
-            "\(Int(min(seconds / 3600, 99999)))h \(Int(seconds.truncatingRemainder(dividingBy: 3600) / 60))m"
     }
 }

@@ -109,8 +109,15 @@ struct AgentRow: View {
             Spacer(minLength: 3)
             Text(agent.provider).foregroundStyle(palette.muted).frame(
                 width: 44, alignment: .leading)
-            Text(agent.elapsedSeconds == 0 ? "—" : Display.runtime(agent.elapsedSeconds))
-                .foregroundStyle(palette.muted).frame(width: 32, alignment: .trailing)
+            TimelineView(.periodic(from: .now, by: 60)) { context in
+                let age = Display.activityAge(
+                    agent.lastActivityAt, now: context.date.timeIntervalSince1970)
+                Text(age)
+                    .foregroundStyle(palette.muted).frame(width: 55, alignment: .trailing)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+                    .help("Time since last logged activity, not turn duration")
+                    .accessibilityLabel("Last logged activity: \(age)")
+            }
             if showSpend {
                 Text(Display.money(agent.spendUsd)).monospacedDigit().frame(
                     width: 49, alignment: .trailing)

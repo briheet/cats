@@ -455,6 +455,40 @@ fn snapshots_are_atomic_and_only_rewrite_changed_content() {
 }
 
 #[test]
+fn agent_activity_is_not_turn_duration_and_unknown_starts_stay_unknown() {
+    let s = store();
+    let mut cursor = Cursor {
+        session: "old-turn".into(),
+        status: AgentStatus::Completed,
+        started: 8000,
+        updated: 8482,
+        ..Cursor::default()
+    };
+    Store::save_cursor(s.connection(), "old-turn", ProviderKind::Codex, &cursor).unwrap();
+    let state = aggregate_between(&s, 44000, 0, 86400, 20.).unwrap();
+    assert_eq!(state.agents[0].elapsed_seconds, 482);
+    assert_eq!(state.agents[0].last_activity_at, Some(8482));
+    assert_eq!(state.agents[0].status, AgentStatus::Idle);
+    cursor.started = 0;
+    cursor.status = AgentStatus::Running;
+    Store::save_cursor(s.connection(), "old-turn", ProviderKind::Codex, &cursor).unwrap();
+    let state = aggregate_between(&s, 44000, 0, 86400, 20.).unwrap();
+    assert_eq!(state.agents[0].elapsed_seconds, 0);
+    assert_eq!(state.agents[0].status, AgentStatus::Idle);
+    assert_eq!(state.waiting_agents, 0);
+    assert!(
+        aggregate_between(&s, 8400, 0, 86400, 20.)
+            .unwrap()
+            .agents
+            .is_empty()
+    );
+    assert_eq!(
+        AgentStatus::Running.at(ProviderKind::Local, 3600),
+        AgentStatus::Waiting
+    );
+}
+
+#[test]
 fn codex_turn_completion_waits_then_idles_and_can_resume() {
     let s = store();
     let mut cursor = Cursor {

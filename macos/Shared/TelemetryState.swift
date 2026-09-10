@@ -62,4 +62,5 @@ struct Agent: Codable, Identifiable, Equatable {
     var elapsedSeconds: Double
     var tokens: Double
     var spendUsd: Double
+    var lastActivityAt: Double? = nil
 }

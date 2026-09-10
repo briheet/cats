@@ -46,9 +46,15 @@ a turn running. `task_complete` marks it waiting for five minutes, then idle.
 Older stored Codex completions use the same rule. Aborted/error turns are failed.
 
 Any running record silent for over five minutes is displayed as waiting, not
-assumed finished. Claude end-turn records are completed. Local agents report their
+assumed finished. Claude/Codex running or waiting records silent for over 30 minutes
+become idle, so abandoned sessions do not wait forever. Claude end-turn records are completed. Local agents report their
 own status and should emit a heartbeat each minute while running.
 
 The UI reads every five seconds, so counts can briefly lag a new turn. No usage is different
 from unavailable collection: a separate collector heartbeat determines health,
 not the age of the spend snapshot.
+
+Agent-row times mean **time since last logged activity**, with an explicit `ago`
+suffix. They are not turn durations or proof that a process is still open. Age
+labels refresh once per minute even if the snapshot is unchanged. Missing activity
+timestamps display a dash; unknown start times do not become fabricated runtimes.

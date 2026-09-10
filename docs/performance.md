@@ -20,6 +20,12 @@ A preceding three-card run measured 0.64 s import and 0.23% UI CPU. These are in
 runs, not statistically established speedups. RSS includes shared/resident pages;
 it is not equivalent to macOS physical footprint.
 
+After the activity-age fix, a three-card run (`just profile-ui`) verified 20,000
+events in 0.81 s, reopened unchanged logs in 0.031 s, and used 0.08 CPU seconds
+over 70.1 s (0.11% of one core). Peak sampled RSS was 70.3 MiB, growing 80 KiB.
+This workload uses synthetic legacy snapshots without activity timestamps;
+timestamp labels are exercised separately by formatter tests and rendered previews.
+
 The two-second stack sample showed the main thread waiting in the AppKit event
 loop. A separate Instruments SwiftUI recording produced no SwiftUI data, so no
 frame-time or hitch claim is made. GPU, battery impact, and multi-hour memory

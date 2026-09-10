@@ -21,7 +21,11 @@ import SwiftUI
             precondition(DesktopCardKind.enabled(in: ["CATS_WIDGETS": selection]) == expected)
         }
         let fixture = URL(fileURLWithPath: "macos/Tests/Fixtures/state.json")
-        let state = try TelemetryState.decode(Data(contentsOf: fixture))
+        var state = try TelemetryState.decode(Data(contentsOf: fixture))
+        let now = Date().timeIntervalSince1970
+        for index in state.agents.indices {
+            state.agents[index].lastActivityAt = now - [15.0, 480, 35518, 90000][index % 4]
+        }
         let themes = try JSONDecoder().decode(
             [String: ThemeState].self,
             from: Data(contentsOf: URL(fileURLWithPath: "build/themes.json"))
