@@ -23,7 +23,7 @@ examples, card switches, updates, and troubleshooting.
 
 - Spend is an API-equivalent estimate, not a subscription bill or remaining quota.
 - Activity comes from log events, not detecting open application windows.
-- The UI refreshes once a minute.
+- The UI refreshes every five seconds, without publishing unchanged readings.
 - Data stays local. Cats stores usage metadata, not conversation text.
 - Cards are desktop overlays, not Apple Widget Gallery widgets.
 

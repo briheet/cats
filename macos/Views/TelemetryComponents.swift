@@ -2,7 +2,7 @@ import SwiftUI
 
 struct Brand: View {
     var body: some View {
-        Text("Cat").font(.system(size: 13, weight: .medium))
+        Text("Cats").font(.system(size: 13, weight: .medium))
     }
 }
 

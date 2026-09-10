@@ -73,7 +73,7 @@ struct GlassSurface: View {
                 shape.fill(palette.surface(scheme))
             } else {
                 shape.fill(.ultraThinMaterial).opacity(0.48)
-                shape.fill(palette.surface(scheme).opacity(scheme == .dark ? 0.48 : 0.30))
+                shape.fill(palette.surface(scheme).opacity(scheme == .dark ? 0.78 : 0.70))
                 shape.fill(
                     LinearGradient(
                         colors: [

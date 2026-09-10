@@ -8,7 +8,7 @@ let panels = windows.filter {
         && ($0[kCGWindowLayer as String] as? Int) == Int(CGWindowLevelForKey(.desktopIconWindow))
             + 1
 }
-let sizes = ["large": [340.0, 340.0], "medium": [340.0, 170.0], "small": [170.0, 170.0]]
+let sizes = ["large": [760.0, 250.0], "medium": [340.0, 170.0], "small": [170.0, 170.0]]
 let selected = (ProcessInfo.processInfo.environment["CATS_WIDGETS"] ?? "large,medium")
     .split(separator: ",").map(String.init)
 guard panels.count == selected.count else {

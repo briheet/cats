@@ -47,7 +47,7 @@ code, and raw provider records do not.
 - Lines over 1 MiB are skipped; batches read at most about 4 MiB.
 - Malformed JSON is skipped. Transient file errors back off; denied access stops collection.
 - Unchanged snapshots are not rewritten.
-- The UI reads at startup and every 60 seconds, publishing only changed readings.
+- The UI reads at startup and every five seconds, publishing only changed readings.
 - A heartbeat older than 180 seconds marks collection unavailable at the next UI refresh.
 - Invalid snapshots retain the last good data and show a warning.
 - LaunchAgents do not automatically restart on failure.

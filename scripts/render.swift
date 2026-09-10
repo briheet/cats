@@ -20,6 +20,29 @@ import SwiftUI
         )
         let directory = URL(fileURLWithPath: "build/previews")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        for count in [0, 1, 3, 5, 8] {
+            var preview = state
+            preview.theme = themes["nord"]
+            preview.agents = (0..<count).map { index in
+                var agent = state.agents[index % state.agents.count]
+                agent.id = "preview-\(index)"
+                agent.name = "agent-\(index + 1)"
+                return agent
+            }
+            preview.activeAgents = preview.agents.filter { $0.status == "running" }.count
+            preview.waitingAgents = preview.agents.filter { $0.status == "waiting" }.count
+            if count == 0 { preview = TelemetryState(theme: themes["nord"]) }
+            let renderer = ImageRenderer(
+                content: DesktopCard(
+                    kind: .overview,
+                    reading: SnapshotReading(state: preview)
+                ).padding(24).background { PreviewBackdrop() })
+            renderer.scale = 2
+            guard let tiff = renderer.nsImage?.tiffRepresentation,
+                let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:])
+            else { throw CocoaError(.fileWriteUnknown) }
+            try png.write(to: directory.appendingPathComponent("agents-\(count).png"))
+        }
         for name in ["dark", "light", "nord", "rose-pine", "rose-pine-moon", "rose-pine-dawn"] {
             var preview = state
             preview.theme = themes[name]

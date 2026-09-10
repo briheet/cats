@@ -12,7 +12,7 @@ enum DesktopCardKind: String, CaseIterable {
 
     var size: CGSize {
         switch self {
-        case .overview: return CGSize(width: 340, height: 340)
+        case .overview: return CGSize(width: 760, height: 250)
         case .providers: return CGSize(width: 340, height: 170)
         case .small: return CGSize(width: 170, height: 170)
         }

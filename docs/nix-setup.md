@@ -50,7 +50,7 @@ The default flake targets Apple Silicon. See [distribution](releasing.md) for In
 
 | Card | Content | Size in points |
 | --- | --- | --- |
-| Large | Overview and agents | 340 × 340 |
+| Large | Spend, up to five agents, providers | 760 × 250 |
 | Medium | Provider usage | 340 × 170 |
 | Small | Spend and budget | 170 × 170 |
 
@@ -100,7 +100,7 @@ See [settings and themes](configuration.md) for customization.
 
 - **No cards:** show the desktop; panels are behind normal windows. Check enabled
   sizes, then use **Show widgets** in the menu.
-- **Stale counts:** allow one minute. Counts reflect log activity, not open windows.
+- **Stale counts:** allow five seconds after ingestion. Counts reflect log activity, not open windows.
 - **Collector unavailable:** inspect `launchctl print gui/$(id -u)/org.nix-community.home.cats`
   and run `cats config`. Do not start another collector against the same directory.
 - **Permission denied:** use accessible paths. Do not grant broad access or reset

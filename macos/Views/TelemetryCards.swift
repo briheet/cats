@@ -5,17 +5,29 @@ struct SmallCardContent: View {
     let reading: SnapshotReading
 
     var body: some View {
+        let diameter: CGFloat = reading.warning == nil ? 92 : 80
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Cat").font(.system(size: 13, weight: .semibold))
+                Text("Cats").font(.system(size: 13, weight: .semibold))
                 Spacer()
                 Text("Today").font(.system(size: 11)).foregroundStyle(palette.muted)
             }
-            Spend(value: reading.state.today.spendUsd, size: 26)
-            BudgetBar(today: reading.state.today)
-            Text("of \(Display.money(reading.state.today.budgetUsd))")
-                .font(.system(size: 11)).foregroundStyle(palette.muted)
-            Spacer(minLength: 0)
+            ZStack {
+                Circle().stroke(palette.muted.opacity(0.18), lineWidth: 6)
+                Circle().trim(from: 0, to: min(max(reading.state.today.budgetFraction, 0), 1))
+                    .stroke(
+                        reading.state.today.budgetFraction > 1 ? palette.error : palette.mint,
+                        style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+                VStack(spacing: 2) {
+                    Spend(value: reading.state.today.spendUsd, size: 21)
+                    Text("of \(Display.money(reading.state.today.budgetUsd))")
+                        .font(.system(size: 9)).foregroundStyle(palette.muted)
+                }
+            }.frame(width: diameter, height: diameter).frame(maxWidth: .infinity)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Estimated spend and daily budget")
             if reading.warning != nil {
                 StatusFooter(reading: reading)
             } else {
@@ -68,39 +80,90 @@ struct ProviderCardContent: View {
 struct OverviewCardContent: View {
     @Environment(\.catsPalette) private var palette
     let reading: SnapshotReading
+
     var body: some View {
-        if !reading.state.hasUsage && reading.state.agents.isEmpty {
-            EmptyTelemetry(reading: reading)
-        } else {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Brand()
-                    Spacer()
-                    Spend(value: reading.state.today.spendUsd, size: 27)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Brand()
+                Spacer()
+                if reading.warning != nil {
+                    StatusFooter(reading: reading)
+                } else {
+                    Text("Today · estimated spend").font(.system(size: 10))
+                        .foregroundStyle(palette.muted)
                 }
-                HStack {
-                    Text("Estimated spend today")
-                    Spacer()
-                    Text("of \(Display.money(reading.state.today.budgetUsd))")
-                }.font(.system(size: 11)).foregroundStyle(palette.muted)
-                BudgetBar(today: reading.state.today)
-                Sparkline(values: reading.state.history.hourlySpend, fill: true).frame(height: 40)
-                AgentCounts(state: reading.state)
-                Hairline()
-                ForEach(reading.state.agents.prefix(4)) { AgentRow(agent: $0) }
-                Spacer(minLength: 0)
-                HStack {
-                    Metric(
-                        title: "tokens today",
-                        value: Display.tokens(reading.state.today.tokensTotal))
-                    Spacer()
-                    Metric(
-                        title: "burn rate",
-                        value: "\(Display.money(reading.state.today.burnRatePerHour))/hr")
+            }
+            HStack(alignment: .top, spacing: 12) {
+                OverviewSection {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Spend(value: reading.state.today.spendUsd, size: 28)
+                        Text("of \(Display.money(reading.state.today.budgetUsd)) budget")
+                            .font(.system(size: 10)).foregroundStyle(palette.muted)
+                        BudgetBar(today: reading.state.today)
+                        Sparkline(values: reading.state.history.hourlySpend, fill: true)
+                            .frame(height: 54)
+                        Text("\(Display.money(reading.state.today.burnRatePerHour))/hr")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(palette.muted)
+                    }
+                }.frame(width: 180)
+                OverviewSection {
+                    VStack(alignment: .leading, spacing: 6) {
+                        AgentCounts(state: reading.state).padding(.bottom, 4)
+                        if reading.state.agents.isEmpty {
+                            Text("No recent agents").font(.system(size: 12))
+                                .foregroundStyle(palette.muted).padding(.top, 12)
+                        }
+                        ForEach(reading.state.agents.prefix(5)) { agent in
+                            AgentRow(agent: agent, showSpend: false).frame(height: 18)
+                        }
+                        if reading.state.agents.count > 5 {
+                            Text("+\(reading.state.agents.count - 5) more in dashboard")
+                                .font(.system(size: 9)).foregroundStyle(palette.muted)
+                        }
+                    }
+                }.frame(width: 300)
+                OverviewSection {
+                    VStack(alignment: .leading, spacing: 10) {
+                        if reading.state.providers.isEmpty {
+                            Text("No provider usage yet").font(.system(size: 11))
+                                .foregroundStyle(palette.muted)
+                        }
+                        ForEach(reading.state.providers.prefix(2)) { provider in
+                            VStack(alignment: .leading, spacing: 5) {
+                                HStack {
+                                    Text(provider.name)
+                                    Spacer()
+                                    Text(Display.money(provider.spendUsd)).monospacedDigit()
+                                }.font(.system(size: 11))
+                                ProgressView(value: min(max(provider.fraction, 0), 1))
+                                    .progressViewStyle(ThinProgressStyle(height: 5))
+                                    .tint(palette.provider(provider.name))
+                                Text("\(Display.tokens(provider.tokens)) tokens")
+                                    .font(.system(size: 9)).foregroundStyle(palette.muted)
+                            }
+                        }
+                        Hairline()
+                        Text("\(Display.tokens(reading.state.today.tokensTotal)) tokens today")
+                            .font(.system(size: 11, weight: .medium))
+                    }
                 }
-                StatusFooter(reading: reading)
             }
         }
+    }
+}
+
+private struct OverviewSection<Content: View>: View {
+    @Environment(\.catsPalette) private var palette
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(12)
+            .background(palette.ink.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(palette.muted.opacity(0.16), lineWidth: 0.5))
     }
 }
 

@@ -14,6 +14,8 @@ just build                   # Local bundle; does not launch it
 just smoke                   # Isolated ingestion, process control, single-writer lock
 just desktop-selection-smoke # Briefly opens each of eight card combinations
 just preview                 # Synthetic previews and corner checks across six themes
+just profile-ui              # Synthetic 20k-record import and 70-second UI CPU/RSS sample
+just refresh-smoke           # Actual five-second AppState refresh and deduplication
 nix flake check              # Packages, Swift style, Home Manager configuration
 ```
 
@@ -54,6 +56,8 @@ Report workload size, duration, build mode, and platform with results. Collector
 measurements combine ingestion with SQLite writes and aggregation with queries;
 they do not measure UI rendering. A short smoke test is not sustained CPU, battery,
 or large-history profiling.
+
+See [UI workload measurements](performance.md) for the latest bounded run and its limits.
 
 ## Style references
 

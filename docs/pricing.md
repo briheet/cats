@@ -49,6 +49,6 @@ Any running record silent for over five minutes is displayed as waiting, not
 assumed finished. Claude end-turn records are completed. Local agents report their
 own status and should emit a heartbeat each minute while running.
 
-The UI reads once a minute, so counts can lag a new turn. No usage is different
+The UI reads every five seconds, so counts can briefly lag a new turn. No usage is different
 from unavailable collection: a separate collector heartbeat determines health,
 not the age of the spend snapshot.

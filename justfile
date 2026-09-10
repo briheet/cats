@@ -51,6 +51,16 @@ install:
 profile:
     cargo run --release -- --profile
 
+# Synthetic 20k-record collector workload and 70-second UI CPU/RSS sample.
+profile-ui: build
+    ruby -rtime scripts/profile-ui.rb
+
+# Observe actual AppState publications against an isolated snapshot.
+refresh-smoke:
+    mkdir -p build
+    env -u SDKROOT -u DEVELOPER_DIR /usr/bin/swiftc -parse-as-library macos/Shared/*.swift macos/CatsApp/{AppState,CollectorProcess}.swift scripts/refresh-smoke.swift -o build/refresh-smoke
+    build/refresh-smoke
+
 # Render the actual SwiftUI widget views in light and dark mode.
 preview:
     mkdir -p build

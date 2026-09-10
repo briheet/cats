@@ -43,7 +43,7 @@ in
     desktop.large.enable = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Show the large overview card (340 × 340 points).";
+      description = "Show the large overview card (760 × 250 points, up to five agents).";
     };
     desktop.medium.enable = lib.mkOption {
       type = lib.types.bool;

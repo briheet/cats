@@ -35,7 +35,7 @@ Run `cats config` to validate and print resolved settings without starting colle
 Unknown keys and invalid values are rejected. Never put secrets in Nix settings:
 generated files are readable in the Nix store.
 
-Theme and budget reload within a minute; UI refresh can add another minute.
+Theme and budget reload within a minute; UI refresh can add five seconds.
 Storage/source changes require a collector restart. Card selection requires a UI
 restart; applying Home Manager handles the service configuration change.
 
