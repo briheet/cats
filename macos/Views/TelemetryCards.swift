@@ -1,5 +1,30 @@
 import SwiftUI
 
+struct SmallCardContent: View {
+    @Environment(\.catsPalette) private var palette
+    let reading: SnapshotReading
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Cats").font(.system(size: 13, weight: .semibold))
+                Spacer()
+                Text("Today").font(.system(size: 11)).foregroundStyle(palette.muted)
+            }
+            Spend(value: reading.state.today.spendUsd, size: 26)
+            BudgetBar(today: reading.state.today)
+            Text("of \(Display.money(reading.state.today.budgetUsd))")
+                .font(.system(size: 11)).foregroundStyle(palette.muted)
+            Spacer(minLength: 0)
+            Text(
+                reading.unavailable
+                    ? "Collector unavailable" : "\(reading.state.activeAgents) running"
+            )
+            .font(.system(size: 11)).foregroundStyle(palette.muted)
+        }
+    }
+}
+
 struct ProviderCardContent: View {
     @Environment(\.catsPalette) private var palette
     let reading: SnapshotReading

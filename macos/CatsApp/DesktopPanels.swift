@@ -18,7 +18,7 @@ import SwiftUI
 
     func show() {
         if panels.isEmpty {
-            for kind in DesktopCardKind.allCases {
+            for kind in DesktopCardKind.enabled(in: ProcessInfo.processInfo.environment) {
                 let size = kind.size
                 let panel = NSPanel(
                     contentRect: NSRect(origin: .zero, size: size),

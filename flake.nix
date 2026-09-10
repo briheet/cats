@@ -77,28 +77,42 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          home = home-manager.lib.homeManagerConfiguration {
-            inherit pkgs;
-            modules = [
-              self.homeManagerModules.default
-              {
-                home.username = "cats-test";
-                home.homeDirectory = "/Users/cats-test";
-                home.stateVersion = "25.11";
-                programs.cats = {
-                  enable = true;
-                  service.enable = true;
-                  settings = {
-                    budget-usd = 30;
-                    theme = "custom";
+          makeHome =
+            desktop:
+            home-manager.lib.homeManagerConfiguration {
+              inherit pkgs;
+              modules = [
+                self.homeManagerModules.default
+                {
+                  home.username = "cats-test";
+                  home.homeDirectory = "/Users/cats-test";
+                  home.stateVersion = "25.11";
+                  programs.cats = {
+                    inherit desktop;
+                    enable = true;
+                    service.enable = true;
+                    settings = {
+                      budget-usd = 30;
+                      theme = "custom";
+                    };
+                    themes.custom = {
+                      inherits = "nord";
+                      colors.accent = "#88c0d0";
+                    };
                   };
-                  themes.custom = {
-                    inherits = "nord";
-                    colors.accent = "#88c0d0";
-                  };
-                };
-              }
-            ];
+                }
+              ];
+            };
+          home = makeHome { };
+          smallHome = makeHome {
+            large.enable = false;
+            medium.enable = false;
+            small.enable = true;
+          };
+          emptyHome = makeHome {
+            large.enable = false;
+            medium.enable = false;
+            small.enable = false;
           };
         in
         {
@@ -108,14 +122,19 @@
             bash ${self}/scripts/format-swift.sh check
             touch "$out"
           '';
-          home-manager = pkgs.runCommand "cats-home-manager-check" { } ''
-            mkdir -p config/themes
-            cp ${home.config.xdg.configFile."cats/config.toml".source} config/config.toml
-            cp ${home.config.xdg.configFile."cats/themes/custom.toml".source} config/themes/custom.toml
-            HOME="$TMPDIR" ${self.packages.${system}.cats}/bin/cats --config "$PWD/config/config.toml" config > "$out"
-            test -f ${home.activationPackage}/LaunchAgents/org.nix-community.home.cats.plist
-            test -f ${home.activationPackage}/LaunchAgents/org.nix-community.home.cats-app.plist
-          '';
+          home-manager =
+            assert
+              home.config.launchd.agents.cats-app.config.EnvironmentVariables.CATS_WIDGETS == "large,medium";
+            assert smallHome.config.launchd.agents.cats-app.config.EnvironmentVariables.CATS_WIDGETS == "small";
+            assert emptyHome.config.launchd.agents.cats-app.config.EnvironmentVariables.CATS_WIDGETS == "";
+            pkgs.runCommand "cats-home-manager-check" { } ''
+              mkdir -p config/themes
+              cp ${home.config.xdg.configFile."cats/config.toml".source} config/config.toml
+              cp ${home.config.xdg.configFile."cats/themes/custom.toml".source} config/themes/custom.toml
+              HOME="$TMPDIR" ${self.packages.${system}.cats}/bin/cats --config "$PWD/config/config.toml" config > "$out"
+              test -f ${home.activationPackage}/LaunchAgents/org.nix-community.home.cats.plist
+              test -f ${home.activationPackage}/LaunchAgents/org.nix-community.home.cats-app.plist
+            '';
         }
       );
     };

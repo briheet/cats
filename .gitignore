@@ -20,3 +20,6 @@ xcuserdata/
 
 # macOS metadata
 .DS_Store
+
+# Local documentation images
+/docs/*.png

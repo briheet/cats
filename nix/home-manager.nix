@@ -40,6 +40,17 @@ in
       default = "top-right";
       description = "Initial widget position on the primary display.";
     };
+    desktop.large.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Show the large overview card (340 × 340 points).";
+    };
+    desktop.medium.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Show the medium provider card (340 × 170 points).";
+    };
+    desktop.small.enable = lib.mkEnableOption "the small spend card (170 × 170 points)";
     desktop.margin = lib.mkOption {
       type = lib.types.ints.between 0 200;
       default = 24;
@@ -130,6 +141,13 @@ in
           CATS_EXTERNAL_COLLECTOR = "1";
           CATS_POSITION = cfg.desktop.position;
           CATS_MARGIN = toString cfg.desktop.margin;
+          CATS_WIDGETS = lib.concatStringsSep "," (
+            lib.filter (size: cfg.desktop.${size}.enable) [
+              "large"
+              "medium"
+              "small"
+            ]
+          );
         };
         RunAtLoad = true;
         KeepAlive = false;

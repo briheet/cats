@@ -67,6 +67,10 @@ smoke:
 desktop-smoke:
     bash scripts/desktop-smoke.sh
 
+# Check every combination of independently enabled desktop cards.
+desktop-selection-smoke:
+    for selection in '' large medium small large,medium large,small medium,small large,medium,small; do CATS_WIDGETS="$selection" bash scripts/desktop-smoke.sh; done
+
 # Includes two 60-second reload cycles in isolated temporary storage.
 theme-smoke:
     cargo build --release

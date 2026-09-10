@@ -48,7 +48,14 @@ inputs.cats.inputs.home-manager.follows = "home-manager";
 imports = [ inputs.cats.homeManagerModules.default ];
 programs.cats = {
   enable = true;
-  desktop = { enable = true; position = "top-right"; margin = 24; };
+  desktop = {
+    enable = true;
+    position = "top-right";
+    margin = 24;
+    large.enable = true;
+    medium.enable = false;
+    small.enable = true;
+  };
   settings = {
     budget-usd = 30;
     theme = "my-nord";
@@ -61,6 +68,13 @@ programs.cats = {
 ```
 
 `themes` also accepts TOML strings and Nix paths. Set `desktop.enable = false` for headless collection, or disable both `desktop.enable` and `service.enable` to install without starting anything.
+
+Card switches are independent: large is the overview (340 × 340), medium shows providers
+(340 × 170), and small shows spend and budget (170 × 170). Large and medium default to
+enabled; small defaults to disabled. Enabled cards stack in large/medium/small order.
+Setting all three to false leaves only the menu bar UI. Apply Home Manager to change
+the selection. For direct launches, use `CATS_WIDGETS=large,small cats-desktop`; an empty
+`CATS_WIDGETS` selects no cards, and an unset variable uses the defaults.
 
 The module builds the Rust collector and Swift/AppKit UI directly from source. No Apple account, certificate, prebuilt bundle, App Group or widget registration is needed. Nix's compiler/linker tooling handles the minimal ARM64 ad-hoc signatures.
 
