@@ -1,5 +1,29 @@
 # UI workload measurements
 
+## Independent products (September 11, 2026)
+
+`just profile-ecosystem` ran optimized Apple Silicon binaries for 70.69 seconds
+after a three-second warm-up. LLM used isolated provider fixtures and its default
+large/medium cards; Metrics sampled the local system with its overview card.
+Both used Nord. There were 34 observed metrics snapshot changes; LLM storage
+remained unchanged, duplicate metrics writers were rejected, and no metrics
+database was created. All test-owned processes were stopped afterward.
+
+| Process | CPU (% of one core) | Peak sampled RSS |
+| --- | --- | --- |
+| Metrics collector | 0.13% | 10.6 MiB |
+| Metrics UI | 0.18% | 52.7 MiB |
+| LLM UI | 0.13% | 65.2 MiB |
+
+This is one bounded run, not a battery-efficiency or multi-hour memory guarantee.
+Other builds were running concurrently; window occlusion was uncontrolled. RSS
+is not physical footprint. The script records its report in
+`build/ecosystem-report.json`. `just metrics-refresh-smoke` separately verifies
+startup reads, two-second publications, unchanged-state suppression and retention
+of the last good reading after corruption.
+
+## Earlier single-product measurements
+
 Measured September 10, 2026 on macOS 26.5.2, Apple Silicon, native optimized build.
 Run `just profile-ui` to repeat with isolated synthetic data; output is under
 `build/profiling/`. No real provider logs or OS privacy changes are involved.
@@ -12,7 +36,7 @@ Run `just profile-ui` to repeat with isolated synthetic data; output is under
 | UI peak sampled RSS, after 5 s warm-up | 74.6 MiB |
 | UI RSS change during measurement | −2.8 MiB |
 
-Set `CATS_WIDGETS=large,medium,medium-agents,small,small-agents,small-burn-rate`
+Set `CATS_LLM_WIDGETS=large,medium,medium-agents,small,small-agents,small-burn-rate`
 when running `just profile-ui` to reproduce the six-card configuration. The harness
 does not control window occlusion, so CPU is not a worst-case rendering bound.
 

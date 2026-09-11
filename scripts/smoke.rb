@@ -13,7 +13,7 @@ def eventually(seconds = 12)
   end
 end
 
-binary = File.expand_path('../target/release/cats', __dir__)
+binary = File.expand_path('../target/release/cats-llm', __dir__)
 root = File.expand_path('..', __dir__)
 report = {}
 Dir.mktmpdir('cats-smoke-') do |dir|
@@ -23,9 +23,9 @@ Dir.mktmpdir('cats-smoke-') do |dir|
   FileUtils.mkdir_p([claude, codex])
   config = File.join(dir, 'config.toml')
   File.write(config, "theme = 'nord'\nbudget-usd = 25\n")
-  env = { 'CATS_CONFIG' => config, 'CATS_BUDGET_USD' => nil, 'CATS_DATA_DIR' => data, 'CLAUDE_CONFIG_DIR' => File.dirname(claude), 'CODEX_HOME' => File.dirname(codex), 'RUST_LOG' => 'cats=debug' }
+  env = { 'CATS_LLM_CONFIG' => config, 'CATS_LLM_BUDGET_USD' => nil, 'CATS_LLM_DATA_DIR' => data, 'CLAUDE_CONFIG_DIR' => File.dirname(claude), 'CODEX_HOME' => File.dirname(codex), 'RUST_LOG' => 'cats_llm=debug' }
   %w[claude codex].each do |provider|
-    rows = File.readlines(File.join(root, 'rust/tests/fixtures', "#{provider}.jsonl"))
+    rows = File.readlines(File.join(root, 'crates/cats-llm/tests/fixtures', "#{provider}.jsonl"))
     File.open(File.join(provider == 'claude' ? claude : codex, 'fixture.jsonl'), 'w') do |file|
       rows.each { |line| row = JSON.parse(line); row['timestamp'] = Time.now.utc.strftime('%Y-%m-%dT%H:%M:%SZ'); file.puts(JSON.generate(row)) }
     end
@@ -34,7 +34,7 @@ Dir.mktmpdir('cats-smoke-') do |dir|
   collector = Process.spawn(env, binary, '--profile', out: log, err: log)
   runner = nil
   begin
-    snapshot = File.join(data, 'cats-state.json')
+    snapshot = File.join(data, 'state.json')
     read_state = -> { JSON.parse(File.read(snapshot)) rescue nil }
     state = eventually { value = read_state.call; value if value && value.dig('today', 'tokens_total') == 3850 }
     report['initial_tokens'] = state.dig('today', 'tokens_total')
@@ -57,7 +57,7 @@ Dir.mktmpdir('cats-smoke-') do |dir|
       puts "Checking #{action}"
       tmp = File.join(data, 'control.tmp')
       File.write(tmp, JSON.generate(action: action))
-      File.rename(tmp, File.join(data, 'cats-control.json'))
+      File.rename(tmp, File.join(data, 'control.json'))
       eventually { status.call(action == 'pause' ? 'waiting' : 'running') }
     end
     report['live_agent_pause_resume'] = true
@@ -65,7 +65,7 @@ Dir.mktmpdir('cats-smoke-') do |dir|
     Process.wait(runner)
     runner = nil
     eventually { status.call('failed') }
-    if ENV['CATS_SMOKE_CONFIG'] == '1'
+    if ENV['CATS_LLM_SMOKE_CONFIG'] == '1'
       File.write(config, "theme = 'rose-pine-dawn'\nbudget-usd = 42\n")
       puts 'Checking configuration reload (up to 60 seconds)'
       eventually(70) { value = read_state.call; value&.dig('theme', 'appearance') == 'light' && value.dig('today', 'budget_usd') == 42 }
@@ -77,7 +77,7 @@ Dir.mktmpdir('cats-smoke-') do |dir|
       raise 'Invalid configuration replaced good values' unless value.dig('theme', 'appearance') == 'light' && value.dig('today', 'budget_usd') == 42
       report['invalid_configuration_retained'] = true
     end
-    if ENV['CATS_SMOKE_PROFILE'] == '1'
+    if ENV['CATS_LLM_SMOKE_PROFILE'] == '1'
       # Let sysinfo observe an actual idle interval between samples.
       sleep 62
     end
@@ -88,7 +88,7 @@ Dir.mktmpdir('cats-smoke-') do |dir|
     log.rewind
     report['profile'] = log.read.lines.select { |line| line.include?('profile') || line.include?('latency') }.map { |line| line.gsub(/\e\[[0-9;]*m/, '').strip }
     report['graceful_shutdown'] = true
-    unless ENV['CATS_SMOKE_CONFIG'] == '1'
+    unless ENV['CATS_LLM_SMOKE_CONFIG'] == '1'
       reset = Process.spawn(env, binary, 'reset', '--yes', out: log, err: log)
       _, reset_status = Process.wait2(reset)
       raise 'Reset failed' unless reset_status.success?

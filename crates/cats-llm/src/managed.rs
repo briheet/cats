@@ -1,6 +1,6 @@
 //! Launch and control only the child process group owned by this wrapper.
 use crate::shutdown;
-use cats::{Result, config::Config, domain::AgentStatus};
+use cats_llm::{Result, config::Config, domain::AgentStatus};
 use serde::Deserialize;
 use std::{
     fs::{self, File},
@@ -59,7 +59,7 @@ fn monitor(config: &Config, name: &str, child: &mut std::process::Child) -> Resu
         writeln!(
             file,
             "{}",
-            serde_json::json!({"timestamp":chrono::Utc::now().to_rfc3339(),"session_id":id,"agent":cats::telemetry::label(name),"status":status})
+            serde_json::json!({"timestamp":chrono::Utc::now().to_rfc3339(),"session_id":id,"agent":cats_llm::telemetry::label(name),"status":status})
         )?;
         file.flush()?;
         Ok(())
@@ -84,7 +84,7 @@ fn monitor(config: &Config, name: &str, child: &mut std::process::Child) -> Resu
             publish(AgentStatus::Failed)?;
             return Ok(());
         }
-        let desired = fs::read_to_string(config.data_dir.join("cats-control.json"))
+        let desired = fs::read_to_string(config.data_dir.join("control.json"))
             .ok()
             .and_then(|x| serde_json::from_str::<Control>(&x).ok());
         let pause = desired.is_some_and(|control| control.action == Action::Pause);

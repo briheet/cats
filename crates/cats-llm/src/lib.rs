@@ -7,6 +7,6 @@ pub mod profiling;
 pub mod snapshot;
 pub mod storage;
 pub mod telemetry;
-pub mod theme;
+pub use cats_core::theme;
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;

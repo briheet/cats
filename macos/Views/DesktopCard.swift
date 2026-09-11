@@ -9,7 +9,7 @@ enum DesktopCardKind: String, CaseIterable {
     case smallBurnRate = "small-burn-rate"
 
     static func enabled(in environment: [String: String]) -> [Self] {
-        let selected = (environment["CATS_WIDGETS"] ?? "large,medium").split(separator: ",")
+        let selected = (environment["CATS_LLM_WIDGETS"] ?? "large,medium").split(separator: ",")
         return selected.compactMap { Self(rawValue: String($0)) }.reduce(into: []) { result, kind in
             if !result.contains(kind) { result.append(kind) }
         }

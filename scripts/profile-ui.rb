@@ -25,22 +25,22 @@ Dir.mktmpdir('cats-profile-') do |dir|
   report = {platform: `uname -sm`.strip, records: 20_000, ui_poll_seconds: 5}
   ['import', 'unchanged'].each do |phase|
     started = clock.call
-    log, status = Open3.capture2e('/usr/bin/time', '-l', File.join(root, 'target/release/cats'), '--config', config, '--data-dir', dir, '--once', '--profile')
+    log, status = Open3.capture2e('/usr/bin/time', '-l', File.join(root, 'target/release/cats-llm'), '--config', config, '--data-dir', dir, '--once', '--profile')
     raise log unless status.success?
     File.write(File.join(output, "collector-#{phase}.log"), log)
     report["collector_#{phase}_seconds"] = clock.call - started
   end
-  count, status = Open3.capture2('/usr/bin/sqlite3', File.join(dir, 'cats.sqlite'), 'SELECT COUNT(*) FROM events')
+  count, status = Open3.capture2('/usr/bin/sqlite3', File.join(dir, 'usage.sqlite'), 'SELECT COUNT(*) FROM events')
   raise 'Workload was not fully ingested' unless status.success? && count.to_i == 20_000
   report[:verified_events] = count.to_i
   state = JSON.parse(File.read(File.join(root, 'macos/Tests/Fixtures/state.json')))
-  snapshot = File.join(dir, 'cats-state.json')
+  snapshot = File.join(dir, 'state.json')
   File.write(snapshot, JSON.generate(state))
   File.write(File.join(dir, 'heartbeat'), Time.now.to_i.to_s)
-  widgets = ENV.fetch('CATS_WIDGETS', 'large,medium,small')
+  widgets = ENV.fetch('CATS_LLM_WIDGETS', 'large,medium,small')
   report[:widgets] = widgets
-  env = {'CATS_DATA_DIR' => dir, 'CATS_EXTERNAL_COLLECTOR' => '1', 'CATS_WIDGETS' => widgets}
-  ui = File.join(root, 'build/Build/Products/Release/Cats.app/Contents/MacOS/Cats')
+  env = {'CATS_LLM_DATA_DIR' => dir, 'CATS_LLM_EXTERNAL_COLLECTOR' => '1', 'CATS_LLM_WIDGETS' => widgets}
+  ui = File.join(root, 'build/Build/Products/Release/CatsLLM.app/Contents/MacOS/CatsLLM')
   pid = Process.spawn(env, ui, out: File.join(output, 'ui.log'), err: [:child, :out])
   begin
     sleep 5

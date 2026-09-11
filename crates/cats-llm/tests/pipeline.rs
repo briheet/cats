@@ -1,6 +1,6 @@
-use cats::collectors::{ClaudeParser, CodexParser, LocalParser, Parser};
-use cats::domain::{AgentStatus, BudgetState, ProviderKind};
-use cats::{
+use cats_llm::collectors::{ClaudeParser, CodexParser, LocalParser, Parser};
+use cats_llm::domain::{AgentStatus, BudgetState, ProviderKind};
+use cats_llm::{
     aggregation::{State, aggregate_between},
     cli::Cli,
     collectors::{self, Cursor},
@@ -25,11 +25,11 @@ fn reset_requires_confirmation_and_recreates_only_generated_storage() {
         format!("claude-dir = {0:?}\ncodex-dir = {0:?}\n", source),
     )
     .unwrap();
-    let database = data.join("cats.sqlite");
+    let database = data.join("usage.sqlite");
     fs::write(&database, "obsolete database").unwrap();
     fs::write(data.join("keep.txt"), "untouched").unwrap();
     let run = |yes| {
-        let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_cats"));
+        let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_cats-llm"));
         command
             .args(["--config"])
             .arg(&config)
@@ -45,16 +45,16 @@ fn reset_requires_confirmation_and_recreates_only_generated_storage() {
     assert_eq!(fs::read_to_string(&database).unwrap(), "obsolete database");
     let outside = dir.path().join("outside");
     fs::write(&outside, "untouched").unwrap();
-    std::os::unix::fs::symlink(&outside, data.join("cats.sqlite-wal")).unwrap();
+    std::os::unix::fs::symlink(&outside, data.join("usage.sqlite-wal")).unwrap();
     assert!(!run(true).status.success());
     assert_eq!(fs::read_to_string(&database).unwrap(), "obsolete database");
     assert_eq!(fs::read_to_string(&outside).unwrap(), "untouched");
-    fs::remove_file(data.join("cats.sqlite-wal")).unwrap();
+    fs::remove_file(data.join("usage.sqlite-wal")).unwrap();
     for name in [
-        "cats.sqlite-wal",
-        "cats.sqlite-shm",
-        "cats.sqlite-journal",
-        "cats-state.json",
+        "usage.sqlite-wal",
+        "usage.sqlite-shm",
+        "usage.sqlite-journal",
+        "state.json",
         "heartbeat",
     ] {
         fs::write(data.join(name), "obsolete").unwrap();
@@ -81,7 +81,7 @@ fn reset_requires_confirmation_and_recreates_only_generated_storage() {
             .unwrap(),
         1
     );
-    assert!(data.join("cats-state.json").exists());
+    assert!(data.join("state.json").exists());
     drop(db);
     assert!(run(true).status.success());
 }
@@ -164,39 +164,39 @@ fn aggregation_rejects_invalid_budgets() {
 }
 
 #[test]
-fn legacy_app_group_never_selects_protected_storage() {
+fn default_storage_is_independent_of_metrics() {
     let dir = tempfile::tempdir().unwrap();
     let file = dir.path().join("config.toml");
     fs::write(&file, "").unwrap();
-    let invoke = |group: &str| {
-        std::process::Command::new(env!("CARGO_BIN_EXE_cats"))
+    let invoke = |metrics_directory: &str| {
+        std::process::Command::new(env!("CARGO_BIN_EXE_cats-llm"))
             .args(["--config", file.to_str().unwrap(), "config"])
             .env("HOME", dir.path())
-            .env("CATS_APP_GROUP", group)
-            .env_remove("CATS_DATA_DIR")
-            .env_remove("CATS_BUDGET_USD")
+            .env("CATS_METRICS_DATA_DIR", metrics_directory)
+            .env_remove("CATS_LLM_DATA_DIR")
+            .env_remove("CATS_LLM_BUDGET_USD")
             .output()
             .unwrap()
     };
-    let output = invoke("ABCDE12345.dev.cats.shared");
+    let output = invoke("/tmp/metrics-not-llm");
     assert!(output.status.success());
     let config: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(
         config["data_dir"],
         dir.path()
-            .join("Library/Application Support/Cats")
+            .join("Library/Application Support/CatsLLM")
             .to_str()
             .unwrap()
     );
     assert!(!dir.path().join("Library").exists());
-    for group in ["", "group.dev.cats.shared", "../escape", ".."] {
-        let output = invoke(group);
+    for metrics_directory in ["", "/tmp/metrics", "../escape", ".."] {
+        let output = invoke(metrics_directory);
         assert!(output.status.success());
         let config: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         assert_eq!(
             config["data_dir"],
             dir.path()
-                .join("Library/Application Support/Cats")
+                .join("Library/Application Support/CatsLLM")
                 .to_str()
                 .unwrap()
         );
@@ -223,7 +223,7 @@ fn scanning_does_not_swallow_permission_denials() {
 
 #[test]
 fn themes_resolve_inheritance_and_reject_invalid_inputs() {
-    use cats::theme::{Appearance, BUILTINS, resolve};
+    use cats_llm::theme::{Appearance, BUILTINS, resolve};
     let dir = tempfile::tempdir().unwrap();
     for (name, _) in BUILTINS {
         resolve(name, dir.path()).unwrap();
@@ -254,7 +254,7 @@ fn themes_resolve_inheritance_and_reject_invalid_inputs() {
 
 #[test]
 fn configuration_is_strict_and_cli_overrides_file() {
-    use cats::config::Config;
+    use cats_llm::config::Config;
     let dir = tempfile::tempdir().unwrap();
     let file = dir.path().join("config.toml");
     assert!(Config::load(Some(file.clone()), None, None).is_err());
@@ -523,7 +523,7 @@ fn snapshots_are_atomic_and_only_rewrite_changed_content() {
     state.generated_at += 60;
     assert!(!snapshot::write(dir.path(), &state).unwrap());
     let value: State =
-        serde_json::from_slice(&fs::read(dir.path().join("cats-state.json")).unwrap()).unwrap();
+        serde_json::from_slice(&fs::read(dir.path().join("state.json")).unwrap()).unwrap();
     assert_eq!(value.generated_at, 9000);
     assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 1);
 }
@@ -540,14 +540,12 @@ fn agent_activity_is_not_turn_duration_and_unknown_starts_stay_unknown() {
     };
     Store::save_cursor(s.connection(), "old-turn", ProviderKind::Codex, &cursor).unwrap();
     let state = aggregate_between(&s, 44000, 0, 86400, 20.).unwrap();
-    assert_eq!(state.agents[0].elapsed_seconds, 482);
     assert_eq!(state.agents[0].last_activity_at, Some(8482));
     assert_eq!(state.agents[0].status, AgentStatus::Idle);
     cursor.started = 0;
     cursor.status = AgentStatus::Running;
     Store::save_cursor(s.connection(), "old-turn", ProviderKind::Codex, &cursor).unwrap();
     let state = aggregate_between(&s, 44000, 0, 86400, 20.).unwrap();
-    assert_eq!(state.agents[0].elapsed_seconds, 0);
     assert_eq!(state.agents[0].status, AgentStatus::Idle);
     assert_eq!(state.waiting_agents, 0);
     assert!(
@@ -626,8 +624,8 @@ fn storage_never_retains_conversation_content() {
 }
 #[test]
 fn clap_validates_budget_and_preserves_agent_arguments() {
-    assert!(Cli::try_parse_from(["cats", "--budget", "NaN"]).is_err());
-    assert!(Cli::try_parse_from(["cats", "--budget", "0"]).is_err());
-    assert!(Cli::try_parse_from(["cats", "run", "backend", "--", "echo", "--hello"]).is_ok());
-    assert!(Cli::try_parse_from(["cats", "run", "backend"]).is_err());
+    assert!(Cli::try_parse_from(["cats-llm", "--budget", "NaN"]).is_err());
+    assert!(Cli::try_parse_from(["cats-llm", "--budget", "0"]).is_err());
+    assert!(Cli::try_parse_from(["cats-llm", "run", "backend", "--", "echo", "--hello"]).is_ok());
+    assert!(Cli::try_parse_from(["cats-llm", "run", "backend"]).is_err());
 }

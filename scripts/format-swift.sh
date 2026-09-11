@@ -9,7 +9,7 @@ esac
 if ! command -v swift-format >/dev/null; then
   exec nix-shell -p swift-format --run "bash scripts/format-swift.sh $cats_mode"
 fi
-cats_sources=(macos/CatsApp macos/Shared macos/Views macos/Preview macos/Tests macos/Package.swift scripts/*.swift)
+cats_sources=(macos/CatsApp macos/Shared macos/Views macos/Preview macos/Tests macos/Package.swift macos/UI macos/MetricsApp macos/MetricsShared scripts/*.swift)
 if [[ "$cats_mode" == format ]]; then
   swift-format format --in-place --recursive "${cats_sources[@]}"
 else

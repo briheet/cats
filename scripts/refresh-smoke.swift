@@ -7,15 +7,15 @@ import Foundation
             UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        setenv("CATS_DATA_DIR", directory.path, 1)
-        setenv("CATS_EXTERNAL_COLLECTOR", "1", 1)
+        setenv("CATS_LLM_DATA_DIR", directory.path, 1)
+        setenv("CATS_LLM_EXTERNAL_COLLECTOR", "1", 1)
         var state = try TelemetryState.decode(
             Data(
                 contentsOf:
                     URL(fileURLWithPath: "macos/Tests/Fixtures/state.json")))
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
-        let snapshot = directory.appendingPathComponent("cats-state.json")
+        let snapshot = directory.appendingPathComponent("state.json")
         try encoder.encode(state).write(to: snapshot, options: .atomic)
         try Data(String(Date().timeIntervalSince1970).utf8)
             .write(to: directory.appendingPathComponent("heartbeat"))

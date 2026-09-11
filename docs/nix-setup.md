@@ -1,5 +1,25 @@
 # Nix and Home Manager setup
 
+The products are independent. Examples below configure LLM; add this in the same
+imported module for Metrics, or use it alone (include `pkgs` in the module arguments):
+
+```nix
+programs.cats-metrics = {
+  enable = true;
+  settings.theme = "nord";
+  # settings.network-interface = "en0";
+  desktop.position = "bottom-left";
+  desktop.font.family = "JetBrainsMono Nerd Font";
+  desktop.font.package = pkgs.nerd-fonts.jetbrains-mono;
+  desktop.font.size = 12;
+};
+```
+
+Both share font, opacity, margin, custom-theme and service switches. Metrics has
+`desktop.overview.enable` instead of LLM's size/variant switches. Disable the
+overview for a menu-only UI. Use `homeManagerModules.cats-metrics` or
+`homeManagerModules.cats-llm` to import only one product's options.
+
 ## Add the flake input
 
 Add Cats to your existing flake inputs:
@@ -22,7 +42,7 @@ Create `modules/common/cats.nix`:
 { inputs, ... }:
 {
   imports = [ inputs.cats.homeManagerModules.default ];
-  programs.cats = {
+  programs.cats-llm = {
     enable = true;
     service.enable = true;
     desktop = {
@@ -60,7 +80,7 @@ The default flake targets Apple Silicon. See [distribution](releasing.md) for In
 Variant lists select one or multiple cards, in list order. For all six:
 
 ```nix
-programs.cats.desktop = {
+programs.cats-llm.desktop = {
   large.enable = true;
   medium = { enable = true; variants = [ "providers" "agents" ]; };
   small = { enable = true; variants = [ "spend" "agents" "burn-rate" ]; };
@@ -80,7 +100,7 @@ to restart the UI with changed variants or typography.
 
 ## Import the module
 
-Set `programs.cats.desktop.opacity = 0.9;` for slightly more transparent glass.
+Set `programs.cats-llm.desktop.opacity = 0.9;` for slightly more transparent glass.
 Values range from 0 (no glass background) to 1 (the standard glass treatment).
 Text remains opaque. The default is 1; macOS Reduce Transparency overrides it.
 
@@ -128,7 +148,7 @@ See [settings and themes](configuration.md) for customization.
 
 ### Recreate the database
 
-After installing the desired Cats version, `cats reset --yes` deletes the database,
+After installing the desired Cats version, `cats-llm reset --yes` deletes the database,
 SQLite sidecars, old UI snapshot, and heartbeat without a backup, creates the
 installed version's schema, reimports available logs, and exits. It preserves
 configuration, themes, managed-agent logs, and control settings. Usage whose source
@@ -138,10 +158,10 @@ or software update, and it refuses to run alongside a collector.
 For the Home Manager service (no sudo):
 
 ```sh
-launchctl bootout gui/$(id -u)/org.nix-community.home.cats
+launchctl bootout gui/$(id -u)/org.nix-community.home.cats-llm
 # Wait for the collector to exit; reset safely refuses if it still holds its lock.
-cats reset --yes
-launchctl bootstrap gui/$(id -u) "$HOME/Library/LaunchAgents/org.nix-community.home.cats.plist"
+cats-llm reset --yes
+launchctl bootstrap gui/$(id -u) "$HOME/Library/LaunchAgents/org.nix-community.home.cats-llm.plist"
 ```
 
 For a manually launched collector, stop it before resetting and restart it afterward.
@@ -153,8 +173,8 @@ error and restart collection. There is no automatic reset on version changes.
 - **No cards:** show the desktop; panels are behind normal windows. Check enabled
   sizes, then use **Show widgets** in the menu.
 - **Stale counts:** allow five seconds after ingestion. Counts reflect log activity, not open windows.
-- **Collector unavailable:** inspect `launchctl print gui/$(id -u)/org.nix-community.home.cats`
-  and run `cats config`. Do not start another collector against the same directory.
+- **Collector unavailable:** inspect `launchctl print gui/$(id -u)/org.nix-community.home.cats-llm`
+  and run `cats-llm config`. Do not start another collector against the same directory.
 - **Permission denied:** use accessible paths. Do not grant broad access or reset
   privacy settings to force collection.
 - **Bootstrap error 5:** check disabled flags and whether the agent is already
@@ -164,9 +184,10 @@ If you previously disabled Cats, inspect `launchctl print-disabled gui/$(id -u)`
 Re-enable these labels without sudo, then apply Home Manager again:
 
 ```sh
-launchctl enable gui/$(id -u)/org.nix-community.home.cats
-launchctl enable gui/$(id -u)/org.nix-community.home.cats-app
+launchctl enable gui/$(id -u)/org.nix-community.home.cats-llm
+launchctl enable gui/$(id -u)/org.nix-community.home.cats-llm-app
 ```
 
-For old WidgetKit setups, remove `appPackage`, `app.autostart`, and local app inputs.
-Cats does not migrate or read the old Group Container.
+When replacing the old single-product installation, remove `programs.cats` and
+retire its old service/app explicitly during deployment. New products do not
+read, migrate, or delete its configuration or storage.

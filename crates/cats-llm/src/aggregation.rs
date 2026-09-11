@@ -23,7 +23,6 @@ pub struct Provider {
     pub spend_usd: f64,
     pub tokens: u64,
     pub fraction: f64,
-    #[serde(default)]
     pub agent_count: u64,
 }
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
@@ -32,8 +31,6 @@ pub struct Agent {
     pub name: String,
     pub provider: ProviderKind,
     pub status: AgentStatus,
-    pub elapsed_seconds: i64,
-    #[serde(default)]
     pub last_activity_at: Option<i64>,
     pub tokens: u64,
     pub spend_usd: f64,
@@ -44,7 +41,6 @@ pub struct History {
 }
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct State {
-    #[serde(default)]
     pub theme: crate::theme::Theme,
     pub schema_version: u32,
     pub generated_at: i64,
@@ -236,26 +232,14 @@ fn read_agents(db: &rusqlite::Connection, now: i64, midnight: i64) -> Result<Vec
     let mut agents: Vec<Agent> = query
         .query_map([midnight.min(now - 86400), now], |row| {
             let stored_status: AgentStatus = row.get(3)?;
-            let started: i64 = row.get(4)?;
             let updated: i64 = row.get(5)?;
             let provider: ProviderKind = row.get(2)?;
             let status = stored_status.at(provider, now - updated);
-            let end = if status == AgentStatus::Running {
-                now
-            } else {
-                updated
-            };
             Ok(Agent {
                 id: row.get(0)?,
                 name: row.get(1)?,
                 provider,
                 status,
-                // Missing starts in older logs are unknown, not Unix-epoch runtimes.
-                elapsed_seconds: if started > 0 && started <= updated {
-                    (end - started).max(0)
-                } else {
-                    0
-                },
                 last_activity_at: Some(updated),
                 tokens: row.get::<_, i64>(6)? as u64,
                 spend_usd: row.get(7)?,

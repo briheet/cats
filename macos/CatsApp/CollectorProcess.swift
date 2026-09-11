@@ -9,12 +9,12 @@ import Foundation
     init(environment: [String: String] = ProcessInfo.processInfo.environment) {
         self.environment = environment
         executable =
-            environment["CATS_COLLECTOR"].map(URL.init(fileURLWithPath:))
-            ?? Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/cats")
+            environment["CATS_LLM_COLLECTOR"].map(URL.init(fileURLWithPath:))
+            ?? Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/cats-llm")
     }
 
     func dataDirectory() throws -> URL {
-        if let path = environment["CATS_DATA_DIR"], path.hasPrefix("/") {
+        if let path = environment["CATS_LLM_DATA_DIR"], path.hasPrefix("/") {
             return URL(fileURLWithPath: path)
         }
         // Rust remains the sole TOML parser and configuration authority.
@@ -38,12 +38,13 @@ import Foundation
     }
 
     func start(dataDirectory: URL) throws {
-        guard environment["CATS_EXTERNAL_COLLECTOR"] != "1", process?.isRunning != true else {
+        guard environment["CATS_LLM_EXTERNAL_COLLECTOR"] != "1", process?.isRunning != true else {
             return
         }
         let child = Process()
         child.executableURL = executable
-        child.environment = environment.merging(["CATS_DATA_DIR": dataDirectory.path]) { _, new in
+        child.environment = environment.merging(["CATS_LLM_DATA_DIR": dataDirectory.path]) {
+            _, new in
             new
         }
         try child.run()
@@ -60,6 +61,6 @@ private enum CollectorError: LocalizedError {
     case invalidConfiguration
 
     var errorDescription: String? {
-        "Cats configuration is invalid. Run cats config to see the error."
+        "Cats configuration is invalid. Run cats-llm config to see the error."
     }
 }

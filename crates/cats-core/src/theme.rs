@@ -3,21 +3,21 @@ use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::Path};
 
 pub const BUILTINS: &[(&str, &str)] = &[
-    ("cats", include_str!("../../themes/cats.toml")),
-    ("nord", include_str!("../../themes/nord.toml")),
-    ("gruvbox", include_str!("../../themes/gruvbox.toml")),
+    ("cats", include_str!("../../../themes/cats.toml")),
+    ("nord", include_str!("../../../themes/nord.toml")),
+    ("gruvbox", include_str!("../../../themes/gruvbox.toml")),
     (
         "catppuccin-mocha",
-        include_str!("../../themes/catppuccin-mocha.toml"),
+        include_str!("../../../themes/catppuccin-mocha.toml"),
     ),
-    ("rose-pine", include_str!("../../themes/rose-pine.toml")),
+    ("rose-pine", include_str!("../../../themes/rose-pine.toml")),
     (
         "rose-pine-moon",
-        include_str!("../../themes/rose-pine-moon.toml"),
+        include_str!("../../../themes/rose-pine-moon.toml"),
     ),
     (
         "rose-pine-dawn",
-        include_str!("../../themes/rose-pine-dawn.toml"),
+        include_str!("../../../themes/rose-pine-dawn.toml"),
     ),
 ];
 

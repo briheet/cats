@@ -4,7 +4,7 @@ import SwiftUI
 struct DashboardView: View {
     @ObservedObject var model: AppState
     private var palette: CatsPalette {
-        CatsPalette(colors: model.reading.state.theme?.colors ?? [:])
+        CatsPalette(colors: model.reading.state.theme.colors)
     }
     private var state: TelemetryState { model.reading.state }
     var body: some View {
@@ -49,7 +49,7 @@ struct DashboardView: View {
                         Text("Managed agents").catsFont(size: 11).foregroundStyle(
                             palette.muted
                         )
-                        .help("Pause and resume apply to commands launched with cats run.")
+                        .help("Pause and resume apply to commands launched with cats-llm run.")
                         Spacer()
                         GlassAction {
                             model.send(.pause)

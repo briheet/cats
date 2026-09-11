@@ -29,14 +29,14 @@ final class StateTests: XCTestCase {
     func testStorageInstancesAreIndependent() throws {
         let first = try temporaryStore()
         let second = try temporaryStore()
-        try fixture().write(to: first.directory.appendingPathComponent("cats-state.json"))
+        try fixture().write(to: first.directory.appendingPathComponent("state.json"))
         XCTAssertTrue(first.read().state.hasUsage)
         XCTAssertFalse(second.read().state.hasUsage)
     }
 
     func testPermissionFailureIsReportedWithoutReadingFurtherFiles() throws {
         let store = try temporaryStore()
-        let file = store.directory.appendingPathComponent("cats-state.json")
+        let file = store.directory.appendingPathComponent("state.json")
         try fixture().write(to: file)
         addTeardownBlock {
             try FileManager.default.setAttributes(
@@ -51,7 +51,7 @@ final class StateTests: XCTestCase {
 
     func testControlMessagesUseTheTypedWireProtocol() throws {
         let store = try temporaryStore()
-        let file = store.directory.appendingPathComponent("cats-control.json")
+        let file = store.directory.appendingPathComponent("control.json")
         for action in [AgentAction.pause, .resume] {
             try store.send(action)
             let command = try JSONDecoder().decode(AgentCommand.self, from: Data(contentsOf: file))
@@ -63,15 +63,17 @@ final class StateTests: XCTestCase {
             ))
     }
 
-    func testThemeIsOptionalAndDecodesResolvedColors() throws {
-        XCTAssertNil(try TelemetryState.decode(fixture()).theme)
+    func testThemeIsRequiredAndDecodesResolvedColors() throws {
         var object = try XCTUnwrap(JSONSerialization.jsonObject(with: fixture()) as? [String: Any])
         object["theme"] = [
             "appearance": "dark", "colors": ["surface": "#2e3440", "accent": "#a3be8c"],
         ]
         let state = try TelemetryState.decode(JSONSerialization.data(withJSONObject: object))
-        XCTAssertEqual(state.theme?.appearance, "dark")
-        XCTAssertEqual(state.theme?.colors["surface"], "#2e3440")
+        XCTAssertEqual(state.theme.appearance, "dark")
+        XCTAssertEqual(state.theme.colors["surface"], "#2e3440")
+        object.removeValue(forKey: "theme")
+        XCTAssertThrowsError(
+            try TelemetryState.decode(JSONSerialization.data(withJSONObject: object)))
     }
     func fixture() throws -> Data {
         try Data(
@@ -115,7 +117,7 @@ final class StateTests: XCTestCase {
         let now = Date(timeIntervalSince1970: 1000)
         XCTAssertTrue(store.read(now: now).unavailable)
         XCTAssertFalse(store.read(now: now).state.hasUsage)
-        let file = store.directory.appendingPathComponent("cats-state.json")
+        let file = store.directory.appendingPathComponent("state.json")
         try fixture().write(to: file)
         let reading = store.read(now: now)
         XCTAssertTrue(reading.state.hasUsage)

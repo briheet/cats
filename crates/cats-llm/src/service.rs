@@ -1,6 +1,6 @@
 //! Bounded ingestion, filesystem notifications and snapshot publication.
 use crate::shutdown;
-use cats::{
+use cats_llm::{
     Result, aggregation,
     cli::{Cli, Command},
     collectors,
@@ -44,11 +44,11 @@ pub fn run(args: &Cli, mut config: Config) -> Result<()> {
     if resetting {
         // Keep the collector lock across deletion, schema creation, and reimport.
         let files = [
-            "cats.sqlite",
-            "cats.sqlite-wal",
-            "cats.sqlite-shm",
-            "cats.sqlite-journal",
-            "cats-state.json",
+            "usage.sqlite",
+            "usage.sqlite-wal",
+            "usage.sqlite-shm",
+            "usage.sqlite-journal",
+            "state.json",
             "heartbeat",
         ];
         for name in files {
@@ -64,7 +64,7 @@ pub fn run(args: &Cli, mut config: Config) -> Result<()> {
         }
         eprintln!(
             "Resetting {} without a backup",
-            config.data_dir.join("cats.sqlite").display()
+            config.data_dir.join("usage.sqlite").display()
         );
         for name in files {
             match std::fs::remove_file(config.data_dir.join(name)) {
@@ -75,7 +75,7 @@ pub fn run(args: &Cli, mut config: Config) -> Result<()> {
             }
         }
     }
-    let mut store = Store::open(&config.data_dir.join("cats.sqlite"))?;
+    let mut store = Store::open(&config.data_dir.join("usage.sqlite"))?;
     let mut metrics = Metrics::new(args.profile);
     let dropped = Arc::new(AtomicU64::new(0));
     let (tx, rx) = mpsc::sync_channel(64);
@@ -90,7 +90,7 @@ pub fn run(args: &Cli, mut config: Config) -> Result<()> {
         }
     })?;
     let mut watched = Vec::new();
-    let mut pending: Vec<(cats::domain::ProviderKind, PathBuf)> = Vec::new();
+    let mut pending: Vec<(cats_llm::domain::ProviderKind, PathBuf)> = Vec::new();
     let mut retry: HashMap<PathBuf, Retry> = HashMap::new();
     let mut reconcile = Instant::now() - Duration::from_secs(60);
     let mut heartbeat = Instant::now() - Duration::from_secs(60);

@@ -1,20 +1,32 @@
-{ lib, rustPlatform }:
+{
+  lib,
+  rustPlatform,
+  product,
+}:
 rustPlatform.buildRustPackage {
-  pname = "cats";
+  pname = "cats-${product}";
   version = "0.1.0";
   src = lib.fileset.toSource {
     root = ../.;
     fileset = lib.fileset.unions [
       ../Cargo.toml
       ../Cargo.lock
-      ../rust
+      ../crates
       ../themes
     ];
   };
   cargoLock.lockFile = ../Cargo.lock;
+  cargoBuildFlags = [
+    "-p"
+    "cats-${product}"
+  ];
+  cargoTestFlags = [
+    "-p"
+    "cats-${product}"
+  ];
   meta = {
-    description = "Local AI-agent telemetry collector for Cats";
-    mainProgram = "cats";
+    description = "Cats ${product} collector";
+    mainProgram = "cats-${product}";
     platforms = lib.platforms.darwin;
   };
 }

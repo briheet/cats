@@ -5,15 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Cats</string>
+	<string>CatsLLM</string>
 	<key>CFBundleExecutable</key>
-	<string>Cats</string>
+	<string>CatsLLM</string>
 	<key>CFBundleIdentifier</key>
-	<string>dev.cats.app</string>
+	<string>dev.cats.llm</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Cats</string>
+	<string>CatsLLM</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -23,6 +23,6 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>Cats</string>
+	<string>CatsLLM</string>
 </dict>
 </plist>

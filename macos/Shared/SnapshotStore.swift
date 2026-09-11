@@ -40,7 +40,7 @@ struct SnapshotStore {
                 return nil
             }
         }
-        let data = readFile("cats-state.json")
+        let data = readFile("state.json")
         let state = data.flatMap { try? TelemetryState.decode($0) }
         // A denied snapshot must not cause a second protected-file access.
         let heartbeatData = accessDenied ? nil : readFile("heartbeat")
@@ -59,7 +59,7 @@ struct SnapshotStore {
     func send(_ action: AgentAction) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let data = try JSONEncoder().encode(AgentCommand(action: action))
-        try data.write(to: directory.appendingPathComponent("cats-control.json"), options: .atomic)
+        try data.write(to: directory.appendingPathComponent("control.json"), options: .atomic)
     }
 
     static func isPermissionDenied(_ error: Error) -> Bool {

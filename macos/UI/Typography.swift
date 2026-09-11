@@ -7,10 +7,9 @@ struct CatsTypography {
     var scale: CGFloat { min(20, max(10, size.isFinite ? size : 12)) / 12 }
 
     static let configured: Self = {
-        let environment = ProcessInfo.processInfo.environment
         return Self(
-            family: environment["CATS_FONT_FAMILY"] ?? "system",
-            size: Double(environment["CATS_FONT_SIZE"] ?? "12") ?? 12)
+            family: AppearanceEnvironment.value("FONT_FAMILY") ?? "system",
+            size: Double(AppearanceEnvironment.value("FONT_SIZE") ?? "12") ?? 12)
     }()
 
     func font(size: CGFloat, weight: Font.Weight) -> Font {

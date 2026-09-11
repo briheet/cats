@@ -52,8 +52,8 @@ import SwiftUI
         guard let screen = NSScreen.screens.first else { return }
         let frame = screen.visibleFrame
         let env = ProcessInfo.processInfo.environment
-        let margin = CGFloat(min(200, max(0, Double(env["CATS_MARGIN"] ?? "24") ?? 24)))
-        let leftAligned = env["CATS_POSITION"] == "top-left"
+        let margin = CGFloat(min(200, max(0, Double(env["CATS_LLM_MARGIN"] ?? "24") ?? 24)))
+        let leftAligned = env["CATS_LLM_POSITION"] == "top-left"
         let rowWidth = min(
             frame.width - 2 * margin,
             max(panels.map { $0.frame.width }.max() ?? 0, 696 * CatsTypography.configured.scale))

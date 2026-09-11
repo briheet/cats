@@ -11,6 +11,11 @@ just fmt                     # Rust and Swift formatting
 just check                   # Formatting and Clippy
 just test                    # Rust integration and Swift model/storage tests
 just build                   # Local bundle; does not launch it
+just build-product metrics   # Build only Cats Metrics
+just metrics-preview         # Render production metrics cards
+just metrics-refresh-smoke   # Verify actual two-second refresh and deduplication
+just ecosystem-smoke         # Separate storage, duplicate writer, live metrics
+just profile-ecosystem       # 70-second two-UI/metrics CPU and RSS sample (build first)
 just smoke                   # Isolated ingestion, process control, single-writer lock
 just desktop-selection-smoke # Briefly opens each of eight card combinations
 just desktop-variants-smoke  # Additional variants, all six together, custom font sizes
@@ -28,10 +33,10 @@ macOS privacy settings as part of a test.
 
 | Location | Responsibility |
 | --- | --- |
-| `rust/src/collectors/` | `Parser` trait and provider implementations; bounded JSONL reading |
-| `rust/src/domain.rs` | Provider/status/budget enums and status aging |
-| `rust/src/{storage,aggregation,telemetry}.rs` | Persistence, queries, pricing |
-| `rust/src/{service,managed,shutdown}.rs` | Collection and owned process groups |
+| `crates/cats-llm/src/collectors/` | `Parser` trait and provider implementations; bounded JSONL reading |
+| `crates/cats-llm/src/domain.rs` | Provider/status/budget enums and status aging |
+| `crates/cats-llm/src/{storage,aggregation,telemetry}.rs` | Persistence, queries, pricing |
+| `crates/cats-llm/src/{service,managed,shutdown}.rs` | Collection and owned process groups |
 | `macos/CatsApp/` | AppKit lifecycle, observable state, collector process |
 | `macos/Shared/` | Codable snapshots, storage reader, formatting; Swift test target |
 | `macos/Views/` | Production UI |
@@ -43,13 +48,13 @@ explicit resource ownership, main-actor UI state, and weak recurring callbacks.
 Propagate recoverable errors; document unsafe invariants. Do not panic on log
 input, guess unknown prices, store conversations, or retry denied access.
 
-Preserve JSON/TOML compatibility. Add a regression test when changing parsing,
+The two-product split intentionally removes old JSON/TOML compatibility. Add a regression test when changing parsing,
 accounting, status rules, or configuration behavior. Preview production cards,
 not a separate mock implementation.
 
 ## Measure, then claim
 
-`just smoke` writes `build/smoke-report.json`. `CATS_SMOKE_PROFILE=1 just smoke`
+`just smoke` writes `build/smoke-report.json`. `CATS_LLM_SMOKE_PROFILE=1 just smoke`
 collects additional samples. `just profile` runs the optimized collector against
 configured sources until interrupted; use temporary sources for benchmarks.
 
@@ -59,6 +64,10 @@ they do not measure UI rendering. A short smoke test is not sustained CPU, batte
 or large-history profiling.
 
 See [UI workload measurements](performance.md) for the latest bounded run and its limits.
+
+See [ecosystem boundaries](ecosystem.md) for Metrics and the shared code. Use
+`nix flake check path:.` while new files are untracked; ordinary Git flakes include
+only tracked files. Validation never installs apps, stops old services, or activates Home Manager.
 
 ## Style references
 

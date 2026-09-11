@@ -5,7 +5,7 @@ import SwiftUI
 @main struct Render {
     @MainActor static func main() throws {
         _ = NSApplication.shared
-        if let path = ProcessInfo.processInfo.environment["CATS_PREVIEW_FONT_PATH"] {
+        if let path = ProcessInfo.processInfo.environment["CATS_LLM_PREVIEW_FONT_PATH"] {
             guard
                 CTFontManagerRegisterFontsForURL(URL(fileURLWithPath: path) as CFURL, .process, nil)
             else {
@@ -18,7 +18,7 @@ import SwiftUI
                 mask & (1 << index) == 0 ? nil : kind
             }
             let selection = expected.map(\.rawValue).joined(separator: ",")
-            precondition(DesktopCardKind.enabled(in: ["CATS_WIDGETS": selection]) == expected)
+            precondition(DesktopCardKind.enabled(in: ["CATS_LLM_WIDGETS": selection]) == expected)
         }
         let fixture = URL(fileURLWithPath: "macos/Tests/Fixtures/state.json")
         var state = try TelemetryState.decode(Data(contentsOf: fixture))
@@ -34,7 +34,7 @@ import SwiftUI
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         for count in [0, 1, 3, 5, 8] {
             var preview = state
-            preview.theme = themes["nord"]
+            preview.theme = themes["nord"] ?? state.theme
             preview.agents = (0..<count).map { index in
                 var agent = state.agents[index % state.agents.count]
                 agent.id = "preview-\(index)"
@@ -43,7 +43,7 @@ import SwiftUI
             }
             preview.activeAgents = preview.agents.filter { $0.status == "running" }.count
             preview.waitingAgents = preview.agents.filter { $0.status == "waiting" }.count
-            if count == 0 { preview = TelemetryState(theme: themes["nord"]) }
+            if count == 0 { preview = TelemetryState(theme: themes["nord"] ?? state.theme) }
             let renderer = ImageRenderer(
                 content: DesktopCard(
                     kind: .overview,
@@ -57,7 +57,7 @@ import SwiftUI
         }
         for name in ["dark", "light"] + themes.keys.sorted() {
             var preview = state
-            preview.theme = themes[name]
+            preview.theme = themes[name] ?? ThemeState(appearance: "system", colors: [:])
             for kind in DesktopCardKind.allCases {
                 try checkCorners(kind: kind, reading: SnapshotReading(state: preview))
             }

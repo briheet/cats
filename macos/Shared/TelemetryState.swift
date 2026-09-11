@@ -1,7 +1,7 @@
 import Foundation
 
 struct TelemetryState: Codable, Equatable {
-    var theme: ThemeState?
+    var theme = ThemeState(appearance: "system", colors: [:])
     var schemaVersion = 1
     var generatedAt: Double = 0
     var lastEventAt: Double?
@@ -42,10 +42,6 @@ struct TelemetryState: Codable, Equatable {
         return state
     }
 }
-struct ThemeState: Codable, Equatable {
-    var appearance: String
-    var colors: [String: String]
-}
 struct ProviderUsage: Codable, Identifiable, Equatable {
     var name: String
     var spendUsd: Double
@@ -59,7 +55,6 @@ struct Agent: Codable, Identifiable, Equatable {
     var name: String
     var provider: String
     var status: String
-    var elapsedSeconds: Double
     var tokens: Double
     var spendUsd: Double
     var lastActivityAt: Double? = nil

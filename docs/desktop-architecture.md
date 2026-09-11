@@ -1,5 +1,8 @@
 # Architecture
 
+This page describes **Cats LLM**. See [ecosystem architecture](ecosystem.md) for
+Cats Metrics, the split, and current installation names.
+
 Cats separates collecting data from displaying it. The collector can run without
 the UI; the UI can display its last snapshot without a live collector.
 
@@ -28,14 +31,14 @@ deduplicated usage, and queries across sessions and time windows. SQLite provide
 these in one local file, without a server. Usage and cursor updates commit in the
 same transaction so restarting does not lose the ingestion position.
 
-Storage defaults to `~/Library/Application Support/Cats`:
+Storage defaults to `~/Library/Application Support/CatsLLM`:
 
 | File | Purpose |
 | --- | --- |
-| `cats.sqlite` | Usage metadata, agent state, costs, file cursors |
-| `cats-state.json` | Atomically replaced UI snapshot |
+| `usage.sqlite` | Usage metadata, agent state, costs, file cursors |
+| `state.json` | Atomically replaced UI snapshot |
 | `heartbeat` | Collector health, independent of snapshot age |
-| `cats-control.json` | Desired pause/resume state for managed commands |
+| `control.json` | Desired pause/resume state for managed commands |
 | `agents/*.jsonl` | Local-agent lifecycle and usage inputs |
 
 Names and session identifiers persist. Prompts, messages, credentials, source
@@ -49,8 +52,7 @@ code, and raw provider records do not.
 - Unchanged snapshots are not rewritten.
 - The UI reads at startup and every five seconds, publishing only changed readings.
 - Agent rows show time since last logged activity (`9h ago`), not turn duration.
-  Missing timestamps display a dash. Legacy elapsed durations remain in the JSON
-  protocol for compatibility; unknown start times never imply an epoch-long runtime.
+  Missing timestamps display a dash. The obsolete elapsed-duration field is removed.
 - Provider running/waiting records older than 30 minutes become idle in snapshots.
   Codex turn completion becomes idle after five minutes. Historical database rows
   are retained as source observations, not rewritten to claim current activity.

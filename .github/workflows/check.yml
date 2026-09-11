@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: rustup update stable --no-self-update
       - run: brew install just
-      - run: cargo fmt --all -- --check && cargo clippy --all-targets -- -D warnings
+      - run: cargo fmt --all -- --check && cargo clippy --workspace --all-targets -- -D warnings
       - run: just test && just build
       - run: just smoke
       - uses: actions/upload-artifact@v4

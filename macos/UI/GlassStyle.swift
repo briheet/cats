@@ -37,7 +37,7 @@ struct CatsPalette {
 }
 private struct GlassOpacityKey: EnvironmentKey {
     static let defaultValue: Double = {
-        let value = Double(ProcessInfo.processInfo.environment["CATS_OPACITY"] ?? "1") ?? 1
+        let value = Double(AppearanceEnvironment.value("OPACITY") ?? "1") ?? 1
         return value.isFinite ? min(1, max(0, value)) : 1
     }()
 }

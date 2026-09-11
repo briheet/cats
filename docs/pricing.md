@@ -5,7 +5,7 @@
 Cats multiplies recorded token counts by its bundled API rates. This estimates
 the API-equivalent cost of observed work; it does not read your provider bill.
 
-Implemented models and rates live in [`price()`](../rust/src/telemetry.rs).
+Implemented models and rates live in [`price()`](../crates/cats-llm/src/telemetry.rs).
 Unknown models keep their token counts but have no cost. Their usage is excluded
 from monetary totals and produces a partial-estimate warning. Valid explicit
 local-agent costs override model pricing.

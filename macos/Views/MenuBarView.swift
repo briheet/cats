@@ -5,7 +5,7 @@ struct MenuBarView: View {
     let showDesktop: () -> Void
     let showDashboard: () -> Void
     private var palette: CatsPalette {
-        CatsPalette(colors: model.reading.state.theme?.colors ?? [:])
+        CatsPalette(colors: model.reading.state.theme.colors)
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {

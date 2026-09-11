@@ -23,7 +23,7 @@ import SwiftUI
         desktop = DesktopPanels(model: model)
         desktop?.show()
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.title = "Cats"
+        item.button?.title = "Cats LLM"
         item.button?.target = self
         item.button?.action = #selector(toggleMenu)
         statusItem = item
@@ -53,7 +53,7 @@ import SwiftUI
                 backing: .buffered,
                 defer: false
             )
-            window.title = "Cats"
+            window.title = "Cats LLM"
             window.titlebarAppearsTransparent = true
             window.isReleasedWhenClosed = false
             window.contentView = NSHostingView(rootView: DashboardView(model: model))

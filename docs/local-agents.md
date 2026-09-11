@@ -29,7 +29,7 @@ Do not include prompts, messages, secrets, or source code. Records larger than
 ## Allow pause/resume
 
 ```sh
-cats run tests -- cargo test
+cats-llm run tests -- cargo test
 ```
 
 The wrapper owns a subprocess group. Menu/dashboard controls suspend or resume
@@ -37,7 +37,7 @@ those groups only; existing Claude/Codex processes remain read-only. Use
 noninteractive commands. Suspension does not cancel remote API work or guarantee
 that billing stops.
 
-`cats-control.json` holds `{"action":"pause"}` or `{"action":"resume"}`.
+`control.json` holds `{"action":"pause"}` or `{"action":"resume"}`.
 This desired state applies to all wrappers, including new ones until resumed.
 Wrapper identities and provider sessions are not merged, so one command can have
 separate local lifecycle and provider usage entries.

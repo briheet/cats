@@ -1,5 +1,5 @@
 {
-  description = "Cats — native glass widgets and local AI telemetry";
+  description = "Cats — independent native LLM and system telemetry";
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
   inputs.home-manager = {
     url = "github:nix-community/home-manager";
@@ -12,47 +12,51 @@
       home-manager,
     }:
     let
-      # Nixpkgs 26.11 dropped Intel Darwin; 26.05 consumers still get both.
       systems = [
         "aarch64-darwin"
       ]
       ++ nixpkgs.lib.optional (nixpkgs.lib.versionOlder (nixpkgs.lib.versions.majorMinor nixpkgs.lib.version) "26.11") "x86_64-darwin";
       eachSystem = nixpkgs.lib.genAttrs systems;
+      products = [
+        "llm"
+        "metrics"
+      ];
+      packagesFor =
+        pkgs:
+        builtins.listToAttrs (
+          nixpkgs.lib.concatMap (
+            product:
+            let
+              collector = pkgs.callPackage ./nix/package.nix { inherit product; };
+            in
+            [
+              {
+                name = "cats-${product}";
+                value = collector;
+              }
+              {
+                name = "cats-${product}-desktop";
+                value = pkgs.callPackage ./nix/desktop.nix { inherit product collector; };
+              }
+            ]
+          ) products
+        );
     in
     {
-      packages = eachSystem (
-        system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-        in
-        {
-          cats = pkgs.callPackage ./nix/package.nix { };
-          cats-desktop = pkgs.callPackage ./nix/desktop.nix { cats = self.packages.${system}.cats; };
-          default = pkgs.symlinkJoin {
-            name = "cats";
-            paths = [
-              self.packages.${system}.cats
-              self.packages.${system}.cats-desktop
-            ];
-          };
-        }
-      );
-      overlays.default = final: _: {
-        cats = final.callPackage ./nix/package.nix { };
-        cats-desktop = final.callPackage ./nix/desktop.nix { cats = final.cats; };
+      packages = eachSystem (system: packagesFor nixpkgs.legacyPackages.${system});
+      overlays.default = final: _: packagesFor final;
+      homeManagerModules = {
+        default = import ./nix/home-manager.nix;
+        cats-llm = import ./nix/product-module.nix "llm";
+        cats-metrics = import ./nix/product-module.nix "metrics";
       };
-      homeManagerModules.default = import ./nix/home-manager.nix;
-      homeManagerModules.cats = self.homeManagerModules.default;
-      apps = eachSystem (system: {
-        desktop = {
+      apps = eachSystem (
+        system:
+        nixpkgs.lib.mapAttrs (name: package: {
           type = "app";
-          program = "${self.packages.${system}.cats-desktop}/bin/cats-desktop";
-        };
-        default = {
-          type = "app";
-          program = "${self.packages.${system}.cats}/bin/cats";
-        };
-      });
+          program = nixpkgs.lib.getExe package;
+        }) self.packages.${system}
+      );
       devShells = eachSystem (
         system:
         let
@@ -78,7 +82,7 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
           makeHome =
-            desktop:
+            programs:
             home-manager.lib.homeManagerConfiguration {
               inherit pkgs;
               modules = [
@@ -87,81 +91,94 @@
                   home.username = "cats-test";
                   home.homeDirectory = "/Users/cats-test";
                   home.stateVersion = "25.11";
-                  programs.cats = {
-                    inherit desktop;
-                    enable = true;
-                    service.enable = true;
-                    settings = {
-                      budget-usd = 30;
-                      theme = "custom";
-                    };
-                    themes.custom = {
-                      inherits = "nord";
-                      colors.accent = "#88c0d0";
-                    };
-                  };
+                  inherit programs;
                 }
               ];
             };
-          home = makeHome { };
-          smallHome = makeHome {
-            large.enable = false;
-            medium.enable = false;
-            small.enable = true;
+          both = makeHome {
+            cats-llm.enable = true;
+            cats-metrics = {
+              enable = true;
+              settings.theme = "custom";
+              themes.custom = {
+                inherits = "nord";
+                colors.accent = "#88c0d0";
+              };
+            };
           };
-          emptyHome = makeHome {
-            large.enable = false;
-            medium.enable = false;
-            small.enable = false;
+          llm = makeHome { cats-llm.enable = true; };
+          metrics = makeHome { cats-metrics.enable = true; };
+          neither = makeHome { };
+          variants = makeHome {
+            cats-llm = {
+              enable = true;
+              desktop = {
+                medium.variants = [
+                  "providers"
+                  "agents"
+                ];
+                small.enable = true;
+                small.variants = [
+                  "spend"
+                  "agents"
+                  "burn-rate"
+                  "spend"
+                ];
+                font.family = "Helvetica Neue";
+                font.size = 16;
+                font.package = pkgs.nerd-fonts.jetbrains-mono;
+                opacity = 0.75;
+              };
+            };
           };
-          variantsHome = makeHome {
-            small.enable = true;
-            small.variants = [
-              "spend"
-              "agents"
-              "burn-rate"
-              "spend"
-            ];
-            medium.variants = [
-              "providers"
-              "agents"
-            ];
-            font.family = "Helvetica Neue";
-            font.size = 16;
-            opacity = 0.75;
-            font.package = pkgs.nerd-fonts.jetbrains-mono;
+          menuOnly = makeHome {
+            cats-metrics = {
+              enable = true;
+              desktop.overview.enable = false;
+            };
           };
         in
-        {
-          collector = self.packages.${system}.cats;
-          desktop = self.packages.${system}.cats-desktop;
+        self.packages.${system}
+        // {
           swift-style = pkgs.runCommand "cats-swift-style" { nativeBuildInputs = [ pkgs.swift-format ]; } ''
             bash ${self}/scripts/format-swift.sh check
             touch "$out"
           '';
           home-manager =
+            assert !(llm.config.launchd.agents ? cats-metrics);
+            assert !(metrics.config.launchd.agents ? cats-llm);
+            assert !(neither.config.launchd.agents ? cats-llm);
+            assert !(neither.config.launchd.agents ? cats-metrics);
             assert
-              home.config.launchd.agents.cats-app.config.EnvironmentVariables.CATS_WIDGETS == "large,medium";
-            assert smallHome.config.launchd.agents.cats-app.config.EnvironmentVariables.CATS_WIDGETS == "small";
-            assert emptyHome.config.launchd.agents.cats-app.config.EnvironmentVariables.CATS_WIDGETS == "";
+              both.config.launchd.agents.cats-llm-app.config.EnvironmentVariables.CATS_LLM_WIDGETS
+              == "large,medium";
             assert
-              variantsHome.config.launchd.agents.cats-app.config.EnvironmentVariables.CATS_WIDGETS
+              both.config.launchd.agents.cats-metrics-app.config.EnvironmentVariables.CATS_METRICS_POSITION
+              == "bottom-left";
+            assert
+              menuOnly.config.launchd.agents.cats-metrics-app.config.EnvironmentVariables.CATS_METRICS_WIDGETS
+              == "";
+            assert
+              variants.config.launchd.agents.cats-llm-app.config.EnvironmentVariables.CATS_LLM_WIDGETS
               == "large,medium,medium-agents,small,small-agents,small-burn-rate";
             assert
-              variantsHome.config.launchd.agents.cats-app.config.EnvironmentVariables.CATS_FONT_FAMILY
+              variants.config.launchd.agents.cats-llm-app.config.EnvironmentVariables.CATS_LLM_FONT_SIZE == "16";
+            assert
+              variants.config.launchd.agents.cats-llm-app.config.EnvironmentVariables.CATS_LLM_FONT_FAMILY
               == "Helvetica Neue";
             assert
-              variantsHome.config.launchd.agents.cats-app.config.EnvironmentVariables.CATS_FONT_SIZE == "16";
-            assert builtins.elem pkgs.nerd-fonts.jetbrains-mono variantsHome.config.home.packages;
-            assert
-              variantsHome.config.launchd.agents.cats-app.config.EnvironmentVariables.CATS_OPACITY == "0.750000";
+              variants.config.launchd.agents.cats-llm-app.config.EnvironmentVariables.CATS_LLM_OPACITY
+              == "0.750000";
+            assert builtins.elem pkgs.nerd-fonts.jetbrains-mono variants.config.home.packages;
             pkgs.runCommand "cats-home-manager-check" { } ''
               mkdir -p config/themes
-              cp ${home.config.xdg.configFile."cats/config.toml".source} config/config.toml
-              cp ${home.config.xdg.configFile."cats/themes/custom.toml".source} config/themes/custom.toml
-              HOME="$TMPDIR" ${self.packages.${system}.cats}/bin/cats --config "$PWD/config/config.toml" config > "$out"
-              test -f ${home.activationPackage}/LaunchAgents/org.nix-community.home.cats.plist
-              test -f ${home.activationPackage}/LaunchAgents/org.nix-community.home.cats-app.plist
+              cp ${both.config.xdg.configFile."cats-metrics/config.toml".source} config/config.toml
+              cp ${both.config.xdg.configFile."cats-metrics/themes/custom.toml".source} config/themes/custom.toml
+              ${
+                self.packages.${system}.cats-metrics
+              }/bin/cats-metrics --config "$PWD/config/config.toml" config > "$out"
+              test -f ${both.activationPackage}/LaunchAgents/org.nix-community.home.cats-llm.plist
+              test -f ${both.activationPackage}/LaunchAgents/org.nix-community.home.cats-metrics.plist
             '';
         }
       );

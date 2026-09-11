@@ -13,9 +13,9 @@ let sizes = [
     "medium-agents": [340.0, 170.0], "small-agents": [170.0, 170.0],
     "small-burn-rate": [170.0, 170.0],
 ]
-let configuredSize = Double(ProcessInfo.processInfo.environment["CATS_FONT_SIZE"] ?? "12") ?? 12
+let configuredSize = Double(ProcessInfo.processInfo.environment["CATS_LLM_FONT_SIZE"] ?? "12") ?? 12
 let scale = min(20, max(10, configuredSize.isFinite ? configuredSize : 12)) / 12
-let selected = (ProcessInfo.processInfo.environment["CATS_WIDGETS"] ?? "large,medium")
+let selected = (ProcessInfo.processInfo.environment["CATS_LLM_WIDGETS"] ?? "large,medium")
     .split(separator: ",").map(String.init)
 guard panels.count == selected.count else {
     fputs("Expected \(selected.count) desktop panels; found \(panels.count)\n", stderr)

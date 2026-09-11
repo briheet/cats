@@ -11,13 +11,13 @@ pub struct Cli {
     #[arg(long)]
     pub profile: bool,
     /// Override the local telemetry storage directory.
-    #[arg(long, env = "CATS_DATA_DIR", global = true)]
+    #[arg(long, env = "CATS_LLM_DATA_DIR", global = true)]
     pub data_dir: Option<PathBuf>,
     /// Daily budget in USD.
-    #[arg(long, env = "CATS_BUDGET_USD", global = true, value_parser = positive_budget)]
+    #[arg(long, env = "CATS_LLM_BUDGET_USD", global = true, value_parser = positive_budget)]
     pub budget: Option<f64>,
-    /// TOML configuration (defaults to $XDG_CONFIG_HOME/cats/config.toml).
-    #[arg(short, long, env = "CATS_CONFIG", global = true)]
+    /// TOML configuration (defaults to $XDG_CONFIG_HOME/cats-llm/config.toml).
+    #[arg(short, long, env = "CATS_LLM_CONFIG", global = true)]
     pub config: Option<PathBuf>,
     #[command(subcommand)]
     pub command: Option<Command>,

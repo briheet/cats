@@ -7,7 +7,8 @@ changes, publishing, system activation, or destructive actions.
 ## Working style
 
 - Start from the actual request, `docs/plan.md`, relevant docs, and reference images.
-  Do not replace the intended product with a different kind of application.
+  Read `docs/ecosystem.md` for current product boundaries; it supersedes the
+  historical single-product plan. Do not replace the intended product with a different kind of application.
 - Make a short plan. Break complex components into small responsibilities and
   visible details before implementing them.
 - Work autonomously within scope. Make sensible, reversible assumptions and state
@@ -37,8 +38,9 @@ changes, publishing, system activation, or destructive actions.
 - Justify dependencies, persistence, and abstraction. A database is not mandatory:
   keep SQLite only when durable cursors, deduplication, transactions, or queries
   justify it. Do not replace working infrastructure solely for stylistic purity.
-- Handle malformed input and recoverable failures explicitly. Preserve existing
-  configuration and data formats, or provide a deliberate migration.
+- Handle malformed input and recoverable failures explicitly. Cats LLM and
+  Cats Metrics deliberately break the old single-product formats: no legacy
+  aliases or automatic migrations. Never delete existing user data.
 - Comment on reasons, invariants, and surprising constraints—not obvious syntax.
 - After changes, remove superseded code, unused options, duplicate paths, and
   obsolete documentation. Preserve unrelated user work and useful reference files.
@@ -125,14 +127,14 @@ changes, publishing, system activation, or destructive actions.
 
 These are current Cats requirements, not universal defaults for other projects:
 
-- The product name is **Cats**. No C monogram or redundant “Your AI Workspace” /
+- The ecosystem name is **Cats**; products are **Cats LLM** and **Cats Metrics**. No C monogram or redundant “Your AI Workspace” /
   “Usage by providers” subtitles.
 - Desktop widgets are native desktop panels, not an ordinary app window presented
   as a widget and not a WidgetKit extension requiring account-based distribution.
 - Small has spend, agents, and burn-rate variants; medium has providers and agents;
   large has one overview. Selection is configurable through Home Manager.
 - The large overview shows at most five agent rows and indicates overflow.
-- The UI checks data every five seconds and publishes only changed readings.
+- LLM checks data every five seconds; Metrics every two seconds. Both publish only changed readings.
 - Activity counts and spend are estimates; never fabricate running sessions or
   imply that estimated token cost is an authoritative provider bill.
 

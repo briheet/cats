@@ -1,36 +1,32 @@
 #!/bin/bash
 set -euo pipefail
-cats_source="${1:?Pass a Cats.app bundle}"
-cats_destination="${2:?Pass an absolute installation path ending in Cats.app}"
-if [[ "$cats_destination" != /*/Cats.app ]]; then
-  echo 'Destination must be an absolute Cats.app path' >&2
-  exit 1
+source_bundle="${1:?Pass a Cats product app bundle}"
+destination="${2:?Pass an absolute app destination}"
+display="$(basename "$source_bundle" .app)"
+case "$display" in
+  CatsLLM) identifier=dev.cats.llm ;;
+  CatsMetrics) identifier=dev.cats.metrics ;;
+  *) echo 'Not a Cats product bundle' >&2; exit 2 ;;
+esac
+[[ "$destination" == /*/"$display.app" ]] || { echo 'Destination must be absolute and match the product' >&2; exit 2; }
+test -x "$source_bundle/Contents/MacOS/$display"
+test "$(/usr/bin/plutil -extract CFBundleIdentifier raw "$source_bundle/Contents/Info.plist")" = "$identifier"
+parent="$(dirname "$destination")"
+mkdir -p "$parent"
+receipt="$parent/.$display-installed-source"
+if [[ -e "$destination" || -L "$destination" ]]; then
+  [[ -f "$receipt" ]] || { echo 'Unmanaged app exists; move it aside before installing.' >&2; exit 1; }
+  test "$(/usr/bin/plutil -extract CFBundleIdentifier raw "$destination/Contents/Info.plist")" = "$identifier"
+  if [[ "$(<"$receipt")" == "$source_bundle" ]] && diff -qr "$source_bundle" "$destination" > /dev/null; then exit 0; fi
 fi
-test -x "$cats_source/Contents/MacOS/Cats"
-test "$(/usr/bin/plutil -extract CFBundleIdentifier raw "$cats_source/Contents/Info.plist")" = dev.cats.app
-cats_parent="$(dirname "$cats_destination")"
-mkdir -p "$cats_parent"
-cats_receipt="$cats_parent/.cats-installed-source"
-if [[ -e "$cats_destination" || -L "$cats_destination" ]]; then
-  if [[ ! -f "$cats_receipt" ]]; then
-    echo "Unmanaged app exists at $cats_destination; move it aside before installing." >&2
-    exit 1
-  fi
-  test "$(/usr/bin/plutil -extract CFBundleIdentifier raw "$cats_destination/Contents/Info.plist")" = dev.cats.app
-  if [[ "$(<"$cats_receipt")" == "$cats_source" ]] && diff -qr "$cats_source" "$cats_destination" > /dev/null; then
-    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$cats_destination"
-    exit 0
-  fi
+stage="$(mktemp -d "$parent/.$display-install.XXXXXX")"
+/usr/bin/ditto "$source_bundle" "$stage/$display.app"
+chmod -R u+w "$stage/$display.app"
+if [[ -e "$destination" || -L "$destination" ]]; then
+  mv "$destination" "$stage/previous-bundle"
+  echo "Previous bundle preserved at $stage/previous-bundle"
 fi
-cats_stage="$(mktemp -d "$cats_parent/.cats-install.XXXXXX")"
-/usr/bin/ditto "$cats_source" "$cats_stage/Cats.app"
-# Nix store bundles are read-only; the owned copy needs writable directories to move.
-chmod -R u+w "$cats_stage/Cats.app"
-if [[ -e "$cats_destination" || -L "$cats_destination" ]]; then
-  mv "$cats_destination" "$cats_stage/previous-bundle"
-  echo "Previous Cats bundle preserved at $cats_stage/previous-bundle"
-fi
-mv "$cats_stage/Cats.app" "$cats_destination"
-rmdir "$cats_stage" 2>/dev/null || true # Keep previous-bundle backups.
-printf '%s\n' "$cats_source" > "$cats_receipt"
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$cats_destination"
+mv "$stage/$display.app" "$destination"
+rmdir "$stage" 2>/dev/null || true
+printf '%s\n' "$source_bundle" > "$receipt"
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$destination"

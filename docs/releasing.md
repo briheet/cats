@@ -4,10 +4,16 @@
 
 | Build | Output |
 | --- | --- |
-| `nix build` | Collector and desktop UI executables |
-| `nix build .#cats` | Rust collector only |
-| `nix build .#cats-desktop` | Swift/AppKit UI with its collector dependency |
-| `just build` | Local `build/Build/Products/Release/Cats.app` bundle |
+| `nix build .#cats-llm` | Rust collector only |
+| `nix build .#cats-llm-desktop` | Swift/AppKit UI with its collector dependency |
+| `nix build .#cats-metrics` | Independent metrics collector |
+| `nix build .#cats-metrics-desktop` | Metrics UI with its own collector dependency |
+| `just build` | Local `CatsLLM.app` and `CatsMetrics.app` under `build/Build/Products/Release` |
+
+There is no ambiguous default package. `just build-product llm` or
+`just build-product metrics` builds one product. `just install llm` or
+`just install metrics` explicitly installs and launches that bundle; builds and
+tests never install anything.
 
 Home Manager launches executables from the Nix store. It does not install a
 WidgetKit extension or copy an app bundle into Applications.

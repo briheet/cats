@@ -1,4 +1,5 @@
-use crate::{Result, aggregation::State};
+pub mod theme;
+
 use std::{
     fs::{self, OpenOptions},
     io::Write,
@@ -6,6 +7,9 @@ use std::{
     path::Path,
 };
 
+pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+
+/// Replace one private file without exposing a partially written snapshot.
 pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
     let tmp = path.with_extension(format!("{}.tmp", std::process::id()));
     let result = (|| {
@@ -13,6 +17,7 @@ pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
             .create(true)
             .truncate(true)
             .write(true)
+            .custom_flags(libc::O_NOFOLLOW)
             .mode(0o600)
             .open(&tmp)?;
         file.write_all(bytes)?;
@@ -24,17 +29,4 @@ pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
         let _ = fs::remove_file(tmp);
     }
     result
-}
-pub fn write(dir: &Path, state: &State) -> Result<bool> {
-    let path = dir.join("cats-state.json");
-    if let Ok(bytes) = fs::read(&path)
-        && let Ok(mut old) = serde_json::from_slice::<State>(&bytes)
-    {
-        old.generated_at = state.generated_at;
-        if old == *state {
-            return Ok(false);
-        }
-    }
-    atomic_write(&path, &serde_json::to_vec(state)?)?;
-    Ok(true)
 }

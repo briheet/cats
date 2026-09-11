@@ -2,8 +2,12 @@
 
 ![Cats desktop widgets showing usage, estimated spend, and agent activity](assets/cats-desktop.png)
 
-Local AI usage, at a glance. Cats reads Claude Code, Codex, and local-agent logs
-and displays token usage, estimated spend, and session activity on your desktop.
+Two independent, local-first macOS apps with matching native glass widgets:
+
+- **Cats LLM** reads Claude Code, Codex, and local-agent logs for usage, estimated spend, and activity.
+- **Cats Metrics** displays CPU, memory, network rates, disk space, battery, and thermal state.
+
+Install either app or both. They share visual components, not collectors, configuration, or storage.
 
 Choose one large overview, two medium variants, or three small variants. Configure
 font family and size, and use Nord,
@@ -17,7 +21,14 @@ No Apple Developer account or signing certificate is needed.
 
 1. Add `github:briheet/cats` to your flake inputs.
 2. Import `inputs.cats.homeManagerModules.default` in a Home Manager module.
-3. Enable `programs.cats.enable = true;` and apply your configuration.
+3. Enable either or both products:
+
+```nix
+programs.cats-llm.enable = true;
+programs.cats-llm.settings.theme = "nord";
+programs.cats-metrics.enable = true;
+programs.cats-metrics.settings.theme = "nord";
+```
 
 Follow the [complete Nix setup](docs/nix-setup.md) for copyable flake/module
 examples, card switches, updates, and troubleshooting.
@@ -26,9 +37,12 @@ examples, card switches, updates, and troubleshooting.
 
 - Spend is an API-equivalent estimate, not a subscription bill or remaining quota.
 - Activity comes from log events, not detecting open application windows.
-- The UI refreshes every five seconds, without publishing unchanged readings.
+- LLM refreshes every five seconds; Metrics every two seconds. Unchanged readings are not republished.
 - Data stays local. Cats stores usage metadata, not conversation text.
 - Cards are desktop overlays, not Apple Widget Gallery widgets.
 
 Read [settings and themes](docs/configuration.md),
 [accounting](docs/pricing.md), or [architecture and limits](docs/desktop-architecture.md).
+
+This is a clean break: there is no `cats` executable or `programs.cats` option.
+Old user data is neither migrated nor deleted. See [the ecosystem architecture](docs/ecosystem.md).

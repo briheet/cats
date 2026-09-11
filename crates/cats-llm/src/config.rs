@@ -50,7 +50,7 @@ impl Config {
                 .map(PathBuf::from)
                 .filter(|p| p.is_absolute())
                 .unwrap_or_else(|| home.join(".config"))
-                .join("cats/config.toml")
+                .join("cats-llm/config.toml")
         });
         let settings: Settings = match std::fs::read_to_string(&config_file) {
             Ok(text) => toml::from_str(&text)?,
@@ -83,7 +83,7 @@ impl Config {
         let data_dir = expand(
             data_dir
                 .or(settings.data_dir)
-                .unwrap_or_else(|| home.join("Library/Application Support/Cats")),
+                .unwrap_or_else(|| home.join("Library/Application Support/CatsLLM")),
         )?;
         Ok(Self {
             config_file,

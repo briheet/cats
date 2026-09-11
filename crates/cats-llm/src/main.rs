@@ -2,7 +2,7 @@ mod managed;
 mod service;
 mod shutdown;
 
-use cats::{
+use cats_llm::{
     Result,
     cli::{Cli, Command},
     config::Config,
@@ -15,7 +15,7 @@ fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "cats=info".into()),
+                .unwrap_or_else(|_| "cats_llm=info".into()),
         )
         .with_writer(std::io::stderr)
         .init();
